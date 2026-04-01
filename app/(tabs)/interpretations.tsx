@@ -57,6 +57,8 @@ export default function InterpretationsScreen() {
                     angle={interp.angle}
                     whatItFeelsLike={interp.whatItFeelsLike}
                     shortTheme={interp.shortTheme}
+                    bestUseCases={interp.bestUseCases}
+                    watchOuts={interp.watchOuts}
                   />
                 ))}
               </View>

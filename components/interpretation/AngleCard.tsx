@@ -7,9 +7,17 @@ interface AngleCardProps {
   angle: Angle;
   whatItFeelsLike: string;
   shortTheme: string;
+  bestUseCases: string;
+  watchOuts: string;
 }
 
-export function AngleCard({ angle, whatItFeelsLike, shortTheme }: AngleCardProps) {
+export function AngleCard({
+  angle,
+  whatItFeelsLike,
+  shortTheme,
+  bestUseCases,
+  watchOuts,
+}: AngleCardProps) {
   const angleInfo = ANGLES[angle];
 
   return (
@@ -24,8 +32,20 @@ export function AngleCard({ angle, whatItFeelsLike, shortTheme }: AngleCardProps
       <Text className="text-gold font-inter-semibold text-sm mb-1">
         {shortTheme}
       </Text>
-      <Text className="text-cream font-inter text-sm leading-5">
+      <Text className="text-cream font-inter text-sm leading-5 mb-3">
         {whatItFeelsLike}
+      </Text>
+      <Text className="text-cream-muted font-inter-bold text-xs uppercase mb-1">
+        Best use
+      </Text>
+      <Text className="text-cream-muted font-inter text-xs leading-5 mb-3">
+        {bestUseCases}
+      </Text>
+      <Text className="text-cream-muted font-inter-bold text-xs uppercase mb-1">
+        Watch out
+      </Text>
+      <Text className="text-cream-muted font-inter text-xs leading-5">
+        {watchOuts}
       </Text>
     </View>
   );
