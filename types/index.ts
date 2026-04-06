@@ -83,6 +83,14 @@ export interface CityResult {
   countryCode: string;
 }
 
+/** Reference city marker for the 3D astrocartography globe. */
+export interface GlobeCity {
+  name: string;
+  lat: number;
+  lng: number;
+  tier: 1 | 2 | 3;
+}
+
 export type Planet =
   | "sun"
   | "moon"

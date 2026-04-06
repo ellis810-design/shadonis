@@ -9,16 +9,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Filter, X, Sparkles } from "lucide-react-native";
-import { AstroMap } from "../../components/map/AstroMap";
+import { AstroGlobeMap } from "../../components/map/AstroGlobeMap";
 import { searchCities } from "../../services/geocoding";
 import { useMapStore } from "../../stores/mapStore";
-import { useUserStore } from "../../stores/userStore";
 import { PLANETS, ANGLES } from "../../constants/planets";
 import { COLORS } from "../../constants/theme";
 import { CityResult, Planet, Angle } from "../../types";
 
 export default function MapScreen() {
-  const { user } = useUserStore();
   const { setSearchedCity, visiblePlanets, visibleAngles, togglePlanet, toggleAngle } =
     useMapStore();
 
@@ -46,7 +44,6 @@ export default function MapScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
       <SafeAreaView edges={["top"]} style={{ backgroundColor: COLORS.surface }}>
         <View className="px-4 py-3 flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
@@ -87,7 +84,6 @@ export default function MapScreen() {
           </View>
         </View>
 
-        {/* Search panel */}
         {showSearch && (
           <View className="px-4 pb-3">
             <View className="flex-row items-center bg-background rounded-xl px-3">
@@ -134,7 +130,6 @@ export default function MapScreen() {
           </View>
         )}
 
-        {/* Filter panel */}
         {showFilters && (
           <View className="px-4 pb-3">
             <Text className="text-cream-muted font-inter-medium text-xs mb-2 uppercase tracking-wider">
@@ -172,7 +167,7 @@ export default function MapScreen() {
             <Text className="text-cream-muted font-inter-medium text-xs mb-2 uppercase tracking-wider">
               Angles
             </Text>
-            <View className="flex-row gap-1.5">
+            <View className="flex-row gap-1.5 flex-wrap">
               {(Object.keys(ANGLES) as Angle[]).map((angle) => {
                 const isActive = visibleAngles.has(angle);
                 return (
@@ -198,8 +193,7 @@ export default function MapScreen() {
         )}
       </SafeAreaView>
 
-      {/* Map */}
-      <AstroMap />
+      <AstroGlobeMap />
     </View>
   );
 }

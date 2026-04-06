@@ -1,5 +1,9 @@
 export const COLORS = {
   background: "#0B0D17",
+  /** Three.js globe backdrop (near-black blue). */
+  globeBackground: "#040810",
+  globeCardSurface: "rgba(10, 14, 30, 0.94)",
+  globeCardBorder: "rgba(201, 168, 76, 0.35)",
   surface: "#161B2E",
   surfaceLight: "#1E2540",
   gold: "#C9A84C",
