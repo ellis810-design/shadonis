@@ -34,7 +34,8 @@ export function AstroGlobeMap() {
         user.birthLat,
         user.birthLng,
         user.birthCity,
-        user.birthCountryCode
+        user.birthCountryCode,
+        user.birthTimezone
       );
       setPlanetaryLines(lines);
     } catch (err: unknown) {

@@ -24,9 +24,33 @@ const API_PLANET_TO_INTERNAL: Record<ApiPlanetName, Planet> = {
   Jupiter: "jupiter", Saturn: "saturn", Uranus: "uranus", Neptune: "neptune", Pluto: "pluto",
 };
 
-const API_ANGLE_TO_INTERNAL: Record<ApiLineType, Angle> = {
-  AC: "asc", DS: "dsc", MC: "mc", IC: "ic",
+const API_ANGLE_TO_INTERNAL: Record<string, Angle> = {
+  AC: "asc",
+  DS: "dsc",
+  DC: "dsc",
+  MC: "mc",
+  IC: "ic",
 };
+
+function normalizeApiPoint(p: {
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lng?: number;
+  lon?: number;
+}): { latitude: number; longitude: number } | null {
+  const lat = p.latitude ?? p.lat;
+  const longitude = p.longitude ?? p.lng ?? p.lon;
+  if (typeof lat !== "number" || typeof longitude !== "number" || Number.isNaN(lat) || Number.isNaN(longitude)) {
+    return null;
+  }
+  return { latitude: lat, longitude };
+}
+
+function normalizeApiLineType(raw: string | undefined): string | null {
+  if (!raw) return null;
+  return String(raw).toUpperCase();
+}
 
 function parseCityName(fullCityString: string): string {
   const parts = fullCityString.split(",").map((s) => s.trim());
@@ -78,25 +102,37 @@ export async function getPlanetaryLines(
   birthLng: number,
   birthCity?: string,
   birthCountryCode?: string,
+  birthTimezone?: string,
 ): Promise<PlanetaryLine[]> {
   const hour = birthTime ? birthTime.getHours() : 12;
   const minute = birthTime ? birthTime.getMinutes() : 0;
 
   const cityName = birthCity ? parseCityName(birthCity) : "New York";
+  const hasCoords = Number.isFinite(birthLat) && Number.isFinite(birthLng);
+
+  const birth_data: Record<string, unknown> = {
+    year: birthDate.getFullYear(),
+    month: birthDate.getMonth() + 1,
+    day: birthDate.getDate(),
+    hour,
+    minute,
+    second: 0,
+    city: cityName,
+    country_code: birthCountryCode || "US",
+  };
+
+  if (hasCoords) {
+    birth_data.latitude = birthLat;
+    birth_data.longitude = birthLng;
+  }
+  if (birthTimezone && birthTimezone.trim().length > 0) {
+    birth_data.timezone = birthTimezone.trim();
+  }
 
   const body = {
     subject: {
       name: "User",
-      birth_data: {
-        year: birthDate.getFullYear(),
-        month: birthDate.getMonth() + 1,
-        day: birthDate.getDate(),
-        hour,
-        minute,
-        second: 0,
-        city: cityName,
-        country_code: birthCountryCode || "US",
-      },
+      birth_data,
     },
     options: {
       planets: API_PLANET_NAMES,
@@ -136,13 +172,28 @@ export async function getPlanetaryLines(
   const result: PlanetaryLine[] = [];
 
   for (const line of data.lines) {
-    const planet = API_PLANET_TO_INTERNAL[line.planet];
+    const raw = String(line.planet ?? "").trim();
+    if (!raw) continue;
+    const titled =
+      raw.length > 1
+        ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()
+        : raw.toUpperCase();
+    const planet = API_PLANET_TO_INTERNAL[titled as ApiPlanetName];
     if (!planet) continue;
 
-    const angle = API_ANGLE_TO_INTERNAL[line.angle || line.line_type];
+    const angleKey = normalizeApiLineType(line.angle ?? line.line_type) ?? "";
+    const angle = API_ANGLE_TO_INTERNAL[angleKey];
     if (!angle) continue;
 
-    const segments = splitIntoSegments(line.points);
+    const rawPoints = line.points ?? [];
+    const points: Array<{ latitude: number; longitude: number }> = [];
+    for (const rp of rawPoints) {
+      const n = normalizeApiPoint(rp);
+      if (n) points.push(n);
+    }
+    if (points.length < 2) continue;
+
+    const segments = splitIntoSegments(points);
 
     for (const segment of segments) {
       result.push({

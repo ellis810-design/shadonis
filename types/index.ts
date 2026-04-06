@@ -34,11 +34,14 @@ export type ApiPlanetName =
 
 export type ApiLineType = "AC" | "DS" | "MC" | "IC";
 
+/** API may return DS or DC for descendant. */
+export type ApiLineTypeRaw = ApiLineType | "DC";
+
 export interface ApiAstrocartographyLine {
-  planet: ApiPlanetName;
-  line_type: ApiLineType;
-  angle: ApiLineType;
-  points: Array<{ latitude: number; longitude: number }>;
+  planet: ApiPlanetName | string;
+  line_type?: ApiLineTypeRaw;
+  angle?: ApiLineTypeRaw;
+  points?: Array<{ latitude?: number; longitude?: number; lat?: number; lng?: number; lon?: number }>;
 }
 
 export interface ApiAstrocartographyResponse {

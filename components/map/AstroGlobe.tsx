@@ -19,7 +19,8 @@ import { planetaryLinesToGlobeSegments, samePlanetarySegment } from "./globe/lin
 import { loadRemoteTexture } from "./globe/loadTexture";
 import { EARTH_BLUE_MARBLE_URL, EARTH_TOPOLOGY_URL } from "./globe/urls";
 
-const LINE_RADIUS = 1.008;
+/** Slightly above Earth surface so lines read clearly over the globe texture. */
+const LINE_RADIUS = 1.018;
 const ATMOSPHERE_RADIUS = 1.015;
 const CAMERA_Z_MIN = 1.5;
 const CAMERA_Z_MAX = 5;
@@ -70,6 +71,7 @@ function buildLineMeshes(
         gapSize: 0.015,
         transparent: true,
         opacity: 1,
+        depthTest: false,
       });
       line = new THREE.Line(geom, mat);
       line.computeLineDistances();
@@ -78,11 +80,13 @@ function buildLineMeshes(
         color: seg.color,
         transparent: true,
         opacity: 1,
+        depthTest: false,
       });
       line = new THREE.Line(geom, mat);
     }
     line.userData.planetaryLine = seg.planetaryLine;
     line.userData.planet = seg.planetaryLine.planet;
+    line.renderOrder = 10;
     meshes.push(line);
   }
   return meshes;
