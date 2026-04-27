@@ -4,20 +4,50 @@
 @import "nativewind/theme";
 
 @theme {
-  --color-background: #0B0D17;
-  --color-surface: #161B2E;
-  --color-surface-light: #1E2540;
-  --color-gold: #C9A84C;
-  --color-gold-light: #E0C878;
-  --color-purple: #6B4C9A;
-  --color-purple-light: #8B6CBB;
-  --color-cream: #F5F0E8;
-  --color-cream-muted: #B8B2A8;
-  --color-danger: #E04B4B;
-  --color-success: #4CAF50;
+  --color-background: #080510;
+  --color-background-alt: #0E0918;
+  --color-surface: #120B1C;
+  --color-surface-light: #16101F;
+  --color-pink: #FF7CBC;
+  --color-pink-bright: #FF5DA8;
+  --color-pink-soft: #E8AED6;
+  --color-cyan: #7FE7E5;
+  --color-cyan-bright: #5AD9DD;
+  --color-gold: #FF7CBC;          /* legacy alias for older Tailwind classes */
+  --color-gold-light: #FF5DA8;    /* legacy alias */
+  --color-purple: #A8E0A8;
+  --color-purple-light: #C9B8E8;
+  --color-cream: #FFFFFF;
+  --color-cream-muted: #E8AED6;
+  --color-cream-tertiary: #8C7A92;
+  --color-divider: rgba(255, 255, 255, 0.07);
+  --color-danger: #FF6B7C;
+  --color-success: #7FE7E5;
 
   --font-inter: "Inter_400Regular";
   --font-inter-medium: "Inter_500Medium";
   --font-inter-semibold: "Inter_600SemiBold";
   --font-inter-bold: "Inter_700Bold";
+  --font-serif: "CormorantGaramond_400Regular";
+  --font-serif-italic: "CormorantGaramond_400Regular_Italic";
+  --font-serif-medium: "CormorantGaramond_500Medium";
+  --font-display: "BodoniModa_700Bold";
+}
+
+/* Web-only: anchor html/body to the cosmic background and add a subtle
+   starfield gradient so the page never feels flat. */
+html, body, #root, #__next {
+  background-color: #080510;
+  color: #FFFFFF;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, rgba(255, 255, 255, 0.45), transparent 50%),
+    radial-gradient(1.5px 1.5px at 75% 18%, rgba(255, 255, 255, 0.35), transparent 50%),
+    radial-gradient(1px 1px at 40% 65%, rgba(255, 255, 255, 0.40), transparent 50%),
+    radial-gradient(2px 2px at 85% 80%, rgba(255, 255, 255, 0.30), transparent 50%),
+    radial-gradient(1.5px 1.5px at 10% 90%, rgba(255, 255, 255, 0.35), transparent 50%),
+    radial-gradient(1px 1px at 55% 5%, rgba(255, 255, 255, 0.30), transparent 50%),
+    radial-gradient(2px 2px at 95% 50%, rgba(255, 255, 255, 0.30), transparent 50%),
+    radial-gradient(1px 1px at 30% 50%, rgba(255, 255, 255, 0.25), transparent 50%);
+  background-size: 1200px 900px;
+  background-attachment: fixed;
 }

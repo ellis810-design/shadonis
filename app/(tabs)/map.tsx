@@ -2,198 +2,284 @@ import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   TextInput,
-  FlatList,
+  useWindowDimensions,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, Filter, X, Sparkles } from "lucide-react-native";
 import { AstroGlobeMap } from "../../components/map/AstroGlobeMap";
-import { searchCities } from "../../services/geocoding";
 import { useMapStore } from "../../stores/mapStore";
-import { PLANETS, ANGLES } from "../../constants/planets";
-import { COLORS } from "../../constants/theme";
-import { CityResult, Planet, Angle } from "../../types";
+import { PALETTE, TYPE, SPACING, RADIUS, LAYOUT } from "../../constants/designSystem";
+import { LIFE_GOALS } from "../../constants/mockChart";
+import { ANGLES } from "../../constants/planets";
+import { Planet } from "../../types";
+
+const ALL_PLANETS: Planet[] = [
+  "sun", "moon", "mercury", "venus", "mars",
+  "jupiter", "saturn", "uranus", "neptune", "pluto",
+];
+
+const LINE_LEGEND: Array<{ code: keyof typeof ANGLES; meaning: string }> = [
+  { code: "mc",  meaning: "planet overhead" },
+  { code: "ic",  meaning: "planet underfoot" },
+  { code: "asc", meaning: "planet rising" },
+  { code: "dsc", meaning: "planet setting" },
+];
 
 export default function MapScreen() {
-  const { setSearchedCity, visiblePlanets, visibleAngles, togglePlanet, toggleAngle } =
-    useMapStore();
+  const { width, height } = useWindowDimensions();
+  const isMobile = width < 880;
+  // In landscape, give the globe at least 65% of the viewport height
+  // (and at least 600px). Mobile keeps the previous compact 480px.
+  const globeHeight = isMobile ? 480 : Math.max(600, Math.round(height * 0.7));
 
-  const [showSearch, setShowSearch] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<CityResult[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [selectedGoals, setSelectedGoals] = useState<Set<string>>(new Set());
+  const [compareCity, setCompareCity] = useState("");
 
-  const handleCitySearch = useCallback(async (text: string) => {
-    setSearchQuery(text);
-    if (text.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const results = await searchCities(text);
-    setSearchResults(results);
-  }, []);
+  const toggleGoal = useCallback(
+    (id: string) => {
+      setSelectedGoals((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
 
-  function handleCitySelect(city: CityResult) {
-    setSearchedCity({ name: city.name, lat: city.lat, lng: city.lng });
-    setShowSearch(false);
-    setSearchQuery("");
-    setSearchResults([]);
-  }
+        let planets: Planet[];
+        if (next.size === 0) {
+          planets = ALL_PLANETS;
+        } else {
+          const uniq = new Set<Planet>();
+          for (const goal of LIFE_GOALS) {
+            if (next.has(goal.id)) goal.planets.forEach((p) => uniq.add(p));
+          }
+          planets = Array.from(uniq);
+        }
+        useMapStore.setState({ visiblePlanets: new Set(planets) });
+        return next;
+      });
+    },
+    []
+  );
 
   return (
-    <View className="flex-1 bg-background">
-      <SafeAreaView edges={["top"]} style={{ backgroundColor: COLORS.surface }}>
-        <View className="px-4 py-3 flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
-            <Sparkles color={COLORS.gold} size={20} />
-            <Text className="text-cream font-inter-bold text-lg">
-              Your Celestial Map
-            </Text>
-          </View>
-          <View className="flex-row gap-2">
-            <TouchableOpacity
-              onPress={() => {
-                setShowSearch(!showSearch);
-                setShowFilters(false);
+    <View style={{ flex: 1, backgroundColor: PALETTE.background }}>
+      {/* Title strip */}
+      <View
+        style={{
+          paddingHorizontal: isMobile ? LAYOUT.pagePadXMobile : LAYOUT.pagePadX,
+          paddingTop: SPACING.lg,
+          paddingBottom: SPACING.md,
+          maxWidth: LAYOUT.maxWidth,
+          width: "100%",
+          alignSelf: "center",
+        }}
+      >
+        <Text style={[TYPE.pageTitle, { fontSize: 28 }]}>
+          Personal AstroCartography
+        </Text>
+        <Text style={[TYPE.pageSubtitle, { marginTop: SPACING.xs, maxWidth: 720 }]}>
+          Coloured curves trace where each planet sat on one of the four angles
+          at the moment you were born.
+        </Text>
+      </View>
+
+      {/* Globe + sidebar */}
+      <View
+        style={{
+          flex: 1,
+          flexDirection: isMobile ? "column" : "row",
+          maxWidth: LAYOUT.maxWidth,
+          width: "100%",
+          alignSelf: "center",
+          paddingHorizontal: isMobile ? 0 : LAYOUT.pagePadX,
+          paddingBottom: SPACING.xl,
+          gap: SPACING.lg,
+        }}
+      >
+        {/* Globe pane */}
+        <View
+          style={{
+            flex: 1,
+            position: "relative",
+            backgroundColor: "#000",
+            borderWidth: 1,
+            borderColor: PALETTE.surfaceBorder,
+            borderRadius: RADIUS.md,
+            overflow: "hidden",
+            height: globeHeight,
+            minHeight: globeHeight,
+          }}
+        >
+          <AstroGlobeMap />
+          <LineLegend />
+          {isMobile && (
+            <Pressable
+              onPress={() => setSidebarOpen((o) => !o)}
+              style={{
+                position: "absolute",
+                top: SPACING.md,
+                right: SPACING.md,
+                paddingVertical: 8,
+                paddingHorizontal: SPACING.md,
+                borderWidth: 1,
+                borderColor: PALETTE.surfaceBorderStrong,
+                borderRadius: RADIUS.md,
+                backgroundColor: "rgba(10,10,10,0.85)",
               }}
-              className={`w-9 h-9 rounded-full items-center justify-center ${
-                showSearch ? "bg-gold" : "bg-surface-light"
-              }`}
             >
-              <Search
-                color={showSearch ? COLORS.background : COLORS.cream}
-                size={16}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setShowFilters(!showFilters);
-                setShowSearch(false);
-              }}
-              className={`w-9 h-9 rounded-full items-center justify-center ${
-                showFilters ? "bg-gold" : "bg-surface-light"
-              }`}
-            >
-              <Filter
-                color={showFilters ? COLORS.background : COLORS.cream}
-                size={16}
-              />
-            </TouchableOpacity>
-          </View>
+              <Text style={[TYPE.buttonLabel, { color: PALETTE.accent }]}>
+                {sidebarOpen ? "Hide" : "Filters"}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
-        {showSearch && (
-          <View className="px-4 pb-3">
-            <View className="flex-row items-center bg-background rounded-xl px-3">
-              <Search color={COLORS.creamMuted} size={16} />
-              <TextInput
-                className="flex-1 text-cream font-inter py-3 px-2"
-                placeholder="Search a city..."
-                placeholderTextColor={COLORS.creamMuted}
-                value={searchQuery}
-                onChangeText={handleCitySearch}
-                autoFocus
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSearchQuery("");
-                    setSearchResults([]);
-                  }}
-                >
-                  <X color={COLORS.creamMuted} size={16} />
-                </TouchableOpacity>
-              )}
-            </View>
-            {searchResults.length > 0 && (
-              <FlatList
-                data={searchResults}
-                keyExtractor={(item) => `${item.lat}-${item.lng}`}
-                className="mt-2 max-h-48"
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => handleCitySelect(item)}
-                    className="py-2.5 px-3 bg-background rounded-lg mb-1"
-                  >
-                    <Text className="text-cream font-inter-medium text-sm">
-                      {item.name}
-                    </Text>
-                    <Text className="text-cream-muted font-inter text-xs">
-                      {item.fullName}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-          </View>
+        {/* Sidebar */}
+        {sidebarOpen && (
+          <Sidebar
+            isMobile={isMobile}
+            selectedGoals={selectedGoals}
+            onToggleGoal={toggleGoal}
+            compareCity={compareCity}
+            onCompareCityChange={setCompareCity}
+            onClose={() => setSidebarOpen(false)}
+          />
         )}
-
-        {showFilters && (
-          <View className="px-4 pb-3">
-            <Text className="text-cream-muted font-inter-medium text-xs mb-2 uppercase tracking-wider">
-              Planets
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-              <View className="flex-row gap-1.5">
-                {(Object.keys(PLANETS) as Planet[]).map((planet) => {
-                  const meta = PLANETS[planet];
-                  const isActive = visiblePlanets.has(planet);
-                  return (
-                    <TouchableOpacity
-                      key={planet}
-                      onPress={() => togglePlanet(planet)}
-                      className={`px-3 py-1.5 rounded-full flex-row items-center gap-1 ${
-                        isActive ? "bg-surface-light" : "bg-background"
-                      }`}
-                    >
-                      <Text style={{ color: isActive ? meta.color : COLORS.creamMuted, fontSize: 14 }}>
-                        {meta.glyph}
-                      </Text>
-                      <Text
-                        className={`text-xs font-inter-medium ${
-                          isActive ? "text-cream" : "text-cream-muted"
-                        }`}
-                      >
-                        {meta.displayName}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-
-            <Text className="text-cream-muted font-inter-medium text-xs mb-2 uppercase tracking-wider">
-              Angles
-            </Text>
-            <View className="flex-row gap-1.5 flex-wrap">
-              {(Object.keys(ANGLES) as Angle[]).map((angle) => {
-                const isActive = visibleAngles.has(angle);
-                return (
-                  <TouchableOpacity
-                    key={angle}
-                    onPress={() => toggleAngle(angle)}
-                    className={`px-3 py-1.5 rounded-full ${
-                      isActive ? "bg-purple/30" : "bg-background"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-inter-medium ${
-                        isActive ? "text-purple-light" : "text-cream-muted"
-                      }`}
-                    >
-                      {ANGLES[angle].displayName}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-      </SafeAreaView>
-
-      <AstroGlobeMap />
+      </View>
     </View>
+  );
+}
+
+function LineLegend() {
+  return (
+    <View
+      style={{
+        position: "absolute",
+        left: SPACING.md,
+        bottom: SPACING.md,
+        backgroundColor: "rgba(10,10,10,0.78)",
+        borderWidth: 1,
+        borderColor: PALETTE.surfaceBorder,
+        borderRadius: RADIUS.md,
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
+      }}
+    >
+      <Text style={[TYPE.sectionLabel, { marginBottom: 6 }]}>Line types</Text>
+      {LINE_LEGEND.map((row) => (
+        <View
+          key={row.code}
+          style={{ flexDirection: "row", marginVertical: 1 }}
+        >
+          <Text
+            style={[
+              TYPE.data,
+              { color: PALETTE.accent, width: 38 },
+            ]}
+          >
+            {row.code.toUpperCase()}
+          </Text>
+          <Text style={TYPE.small}>{row.meaning}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+interface SidebarProps {
+  isMobile: boolean;
+  selectedGoals: Set<string>;
+  onToggleGoal: (id: string) => void;
+  compareCity: string;
+  onCompareCityChange: (v: string) => void;
+  onClose: () => void;
+}
+
+function Sidebar({
+  isMobile,
+  selectedGoals,
+  onToggleGoal,
+  compareCity,
+  onCompareCityChange,
+}: SidebarProps) {
+  return (
+    <ScrollView
+      style={{
+        width: isMobile ? "100%" : 280,
+        maxHeight: isMobile ? 360 : undefined,
+      }}
+      contentContainerStyle={{
+        paddingHorizontal: isMobile ? LAYOUT.pagePadXMobile : 0,
+        paddingTop: SPACING.md,
+      }}
+      showsVerticalScrollIndicator={false}
+    >
+      <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.md }]}>
+        Life goals
+      </Text>
+      <View style={{ marginBottom: SPACING.xl }}>
+        {LIFE_GOALS.map((goal) => {
+          const checked = selectedGoals.has(goal.id);
+          return (
+            <Pressable
+              key={goal.id}
+              onPress={() => onToggleGoal(goal.id)}
+              style={(state: any) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 10,
+                paddingHorizontal: SPACING.sm,
+                borderRadius: RADIUS.sm,
+                backgroundColor: state.hovered ? PALETTE.accentMuted : "transparent",
+              })}
+            >
+              <View
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderWidth: 1,
+                  borderColor: checked ? PALETTE.accent : PALETTE.surfaceBorderStrong,
+                  backgroundColor: checked ? PALETTE.accent : "transparent",
+                  borderRadius: 2,
+                  marginRight: SPACING.md,
+                }}
+              />
+              <Text
+                style={[
+                  TYPE.body,
+                  { color: checked ? PALETTE.textPrimary : PALETTE.textSecondary },
+                ]}
+              >
+                {goal.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.sm }]}>
+        Best-match places
+      </Text>
+      <Text style={[TYPE.smallItalic, { marginBottom: SPACING.xl }]}>
+        Pick a life goal above to surface the cities your chart most supports.
+      </Text>
+
+      <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.sm }]}>
+        Compare places
+      </Text>
+      <TextInput
+        value={compareCity}
+        onChangeText={onCompareCityChange}
+        placeholder={"Type a city\u2026"}
+        placeholderTextColor={PALETTE.textTertiary}
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: PALETTE.surfaceBorderStrong,
+          paddingVertical: SPACING.sm,
+          color: PALETTE.textPrimary,
+          fontFamily: "Inter_400Regular",
+          fontSize: 14,
+        }}
+      />
+    </ScrollView>
   );
 }

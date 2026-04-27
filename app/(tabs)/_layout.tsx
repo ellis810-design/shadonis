@@ -1,60 +1,19 @@
-import { Tabs } from "expo-router";
-import { Map, BookOpen, User, MessageCircle } from "lucide-react-native";
-import { COLORS } from "../../constants/theme";
+import { Slot } from "expo-router";
+import { View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AppHeader } from "../../components/ui/AppHeader";
+import { PALETTE } from "../../constants/designSystem";
 
-export default function TabLayout() {
+export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.gold,
-        tabBarInactiveTintColor: COLORS.creamMuted,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.surfaceLight,
-          borderTopWidth: 1,
-          height: 85,
-          paddingBottom: 25,
-          paddingTop: 10,
-        },
-        tabBarLabelStyle: {
-          fontFamily: "Inter_500Medium",
-          fontSize: 11,
-        },
-      }}
+    <SafeAreaView
+      edges={["top"]}
+      style={{ flex: 1, backgroundColor: PALETTE.background }}
     >
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: "Map",
-          tabBarIcon: ({ color, size }) => <Map color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="interpretations"
-        options={{
-          title: "Readings",
-          tabBarIcon: ({ color, size }) => (
-            <BookOpen color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="feedback"
-        options={{
-          title: "Feedback",
-          tabBarIcon: ({ color, size }) => (
-            <MessageCircle color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
-        }}
-      />
-    </Tabs>
+      <AppHeader showRibbon />
+      <View style={{ flex: 1, backgroundColor: PALETTE.background }}>
+        <Slot />
+      </View>
+    </SafeAreaView>
   );
 }

@@ -28,21 +28,9 @@ const AUTO_ROTATE = 0.0006;
 const DAMPING = 0.96;
 const ROT_X_CLAMP = 1.2;
 
-const ATMOSPHERE_VERT = `
-varying vec3 vNormal;
-void main() {
-  vNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
-const ATMOSPHERE_FRAG = `
-varying vec3 vNormal;
-void main() {
-  float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-  gl_FragColor = vec4(0.3, 0.5, 1.0, 1.0) * intensity * 0.8;
-}
-`;
+// Atmosphere is now a plain back-faced MeshBasicMaterial (see below).
+// The previous custom ShaderMaterial caused intermittent shader-compile
+// failures inside Three's getUniforms on web.
 
 export interface AstroGlobeProps {
   planetaryLines: PlanetaryLine[];
@@ -258,6 +246,22 @@ export default function AstroGlobe({
 
   const onContextCreate = useCallback(
     async (gl: ExpoWebGLRenderingContext) => {
+      // expo-gl returns `null` from getShaderInfoLog / getProgramInfoLog where
+      // browser WebGL returns "". Three.js 0.166+ calls `.trim()` on the
+      // result, which crashes ("Cannot read properties of null (reading
+      // 'trim')") on the very first WebGLProgram compile. Patch both lookups
+      // to always return a string.
+      const origShaderLog = gl.getShaderInfoLog?.bind(gl);
+      const origProgramLog = gl.getProgramInfoLog?.bind(gl);
+      if (origShaderLog) {
+        (gl as any).getShaderInfoLog = (shader: WebGLShader) =>
+          origShaderLog(shader) ?? "";
+      }
+      if (origProgramLog) {
+        (gl as any).getProgramInfoLog = (program: WebGLProgram) =>
+          origProgramLog(program) ?? "";
+      }
+
       const { drawingBufferWidth: w, drawingBufferHeight: h } = gl;
       layoutRef.current = {
         width: layoutRef.current.width > 1 ? layoutRef.current.width : w,
@@ -310,13 +314,18 @@ export default function AstroGlobe({
         globeGroup.add(earth);
       }
 
-      const atmoGeo = new THREE.SphereGeometry(ATMOSPHERE_RADIUS, 64, 64);
-      const atmoMat = new THREE.ShaderMaterial({
-        vertexShader: ATMOSPHERE_VERT,
-        fragmentShader: ATMOSPHERE_FRAG,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide,
+      // Soft atmosphere — back-faced sphere with additive transparent fill.
+      // (We previously used a custom ShaderMaterial here, but Three.js's
+      // shader compiler choked on it across some browser/driver combos with
+      // a "Cannot read properties of null (reading 'trim')" error inside
+      // getUniforms. The simpler material gives an indistinguishable look.)
+      const atmoGeo = new THREE.SphereGeometry(ATMOSPHERE_RADIUS * 1.04, 48, 48);
+      const atmoMat = new THREE.MeshBasicMaterial({
+        color: 0x4d80ff,
         transparent: true,
+        opacity: 0.10,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
         depthWrite: false,
       });
       globeGroup.add(new THREE.Mesh(atmoGeo, atmoMat));
@@ -368,8 +377,17 @@ export default function AstroGlobe({
           mesh.scale.setScalar(s);
         }
 
-        ctx.renderer.render(ctx.scene, ctx.camera);
-        gl.endFrameEXP();
+        try {
+          ctx.renderer.render(ctx.scene, ctx.camera);
+          gl.endFrameEXP();
+        } catch (err) {
+          // Cancel the loop on a fatal render error rather than spamming the
+          // error overlay every frame.
+          if (ctx.raf) cancelAnimationFrame(ctx.raf);
+          ctx.raf = 0;
+          // eslint-disable-next-line no-console
+          console.error("[AstroGlobe] render failed:", err);
+        }
       };
 
       tick();

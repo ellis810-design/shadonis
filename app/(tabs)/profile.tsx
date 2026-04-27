@@ -1,166 +1,198 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Alert, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  User,
-  Calendar,
-  Clock,
-  MapPin,
-  LogOut,
-  Crown,
-  ChevronRight,
-  Sparkles,
-} from "lucide-react-native";
+  View,
+  Text,
+  Pressable,
+  Alert,
+  useWindowDimensions,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { supabase } from "../../services/supabase";
 import { useUserStore } from "../../stores/userStore";
-import { COLORS } from "../../constants/theme";
+import { Page, Section, Card } from "../../components/ui/Page";
+import { PALETTE, TYPE, SPACING, ELEMENT_COLORS } from "../../constants/designSystem";
+import { PLANETS } from "../../constants/planets";
+import { MOCK_CHART } from "../../constants/mockChart";
+
+const ANCHORS = [
+  { key: "sun" as const,    label: "Sun",     data: MOCK_CHART.sun,    note: "core identity" },
+  { key: "moon" as const,   label: "Moon",    data: MOCK_CHART.moon,   note: "inner world" },
+  { key: "rising" as const, label: "Rising",  data: MOCK_CHART.rising, note: "first impression" },
+];
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, setUser, setSession, setHasCompletedOnboarding } =
-    useUserStore();
+  const { user, name, reset } = useUserStore();
+  const { width } = useWindowDimensions();
+  const stack = width < 720;
 
-  async function handleLogout() {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await supabase.auth.signOut();
-          setUser(null);
-          setSession(null);
-          setHasCompletedOnboarding(false);
-          router.replace("/(auth)/welcome");
-        },
-      },
-    ]);
-  }
-
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-
-  function formatTime(timeStr: string | null, unknown: boolean): string {
-    if (unknown || !timeStr) return "Unknown (using noon default)";
-    const [h, m] = timeStr.split(":");
-    const hour = parseInt(h);
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${m} ${period}`;
+  async function handleStartOver() {
+    const confirm = () =>
+      Promise.resolve(
+        Platform.OS === "web"
+          ? window.confirm("Clear this chart and start over?")
+          : new Promise<boolean>((resolve) =>
+              Alert.alert("Start over", "Clear this chart?", [
+                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                { text: "Clear", style: "destructive", onPress: () => resolve(true) },
+              ])
+            )
+      );
+    const ok = await confirm();
+    if (!ok) return;
+    reset();
+    router.replace("/welcome");
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <ScrollView className="flex-1 px-4 py-4">
-        {/* Header */}
-        <View className="items-center mb-8">
-          <View className="w-20 h-20 rounded-full bg-surface items-center justify-center mb-3 border-2 border-gold/30">
-            <User color={COLORS.gold} size={32} />
-          </View>
-          <Text className="text-cream font-inter-bold text-xl">
-            Your Profile
-          </Text>
-          {user?.subscriptionTier === "premium" && (
-            <View className="flex-row items-center gap-1 mt-1">
-              <Crown color={COLORS.gold} size={14} />
-              <Text className="text-gold font-inter-medium text-xs">
-                Premium Member
-              </Text>
+    <Page
+      title="Profile"
+      subtitle={"A portrait of your natal chart \u2014 the anchors, patterns, and planetary weight that define your cosmic recipe."}
+    >
+      <Section label="Anchors">
+        <View style={{ flexDirection: stack ? "column" : "row", gap: SPACING.md }}>
+          {ANCHORS.map((a) => (
+            <View key={a.key} style={{ flex: 1 }}>
+              <Card>
+                <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.md }]}>
+                  {a.label}
+                </Text>
+                <Text style={[TYPE.cardTitle, { fontSize: 28 }]}>
+                  {a.data.sign}
+                </Text>
+                <Text style={[TYPE.small, { marginTop: 2 }]}>{a.note}</Text>
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: PALETTE.divider,
+                    marginVertical: SPACING.md,
+                  }}
+                />
+                <Text style={TYPE.small}>
+                  {`${a.data.element} \u00B7 ${a.data.modality} \u00B7 ruled by ${a.data.rulingPlanet}`}
+                </Text>
+                <Text style={[TYPE.smallItalic, { marginTop: SPACING.md }]}>
+                  {a.data.theme}
+                </Text>
+              </Card>
             </View>
-          )}
+          ))}
         </View>
+      </Section>
 
-        {/* Birth Info */}
-        <View className="bg-surface rounded-2xl p-4 mb-4">
-          <Text className="text-cream-muted font-inter-medium text-xs uppercase tracking-wider mb-3">
-            Birth Information
-          </Text>
-
-          <View className="gap-4">
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-full bg-background items-center justify-center">
-                <Calendar color={COLORS.gold} size={16} />
-              </View>
-              <View>
-                <Text className="text-cream-muted font-inter text-xs">
-                  Date
-                </Text>
-                <Text className="text-cream font-inter-medium">
-                  {user ? formatDate(user.birthDate) : "—"}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-full bg-background items-center justify-center">
-                <Clock color={COLORS.gold} size={16} />
-              </View>
-              <View>
-                <Text className="text-cream-muted font-inter text-xs">
-                  Time
-                </Text>
-                <Text className="text-cream font-inter-medium">
-                  {user
-                    ? formatTime(user.birthTime, user.birthTimeUnknown)
-                    : "—"}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-full bg-background items-center justify-center">
-                <MapPin color={COLORS.gold} size={16} />
-              </View>
-              <View>
-                <Text className="text-cream-muted font-inter text-xs">
-                  Location
-                </Text>
-                <Text className="text-cream font-inter-medium">
-                  {user?.birthCity ?? "—"}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Subscription */}
-        {user?.subscriptionTier === "free" && (
-          <TouchableOpacity className="bg-gradient-to-r from-purple to-gold rounded-2xl p-4 mb-4 border border-gold/30 bg-surface">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3">
-                <View className="w-10 h-10 rounded-full bg-gold/20 items-center justify-center">
-                  <Sparkles color={COLORS.gold} size={18} />
-                </View>
-                <View>
-                  <Text className="text-cream font-inter-bold text-base">
-                    Upgrade to Premium
+      <Section label="Element balance">
+        <Card>
+          {(["fire", "earth", "air", "water"] as const).map((el) => {
+            const pct = MOCK_CHART.elementBalance[el];
+            return (
+              <View key={el} style={{ marginBottom: SPACING.md }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 6,
+                  }}
+                >
+                  <Text style={[TYPE.sectionLabel, { color: PALETTE.textSecondary }]}>
+                    {el}
                   </Text>
-                  <Text className="text-cream-muted font-inter text-xs">
-                    Unlock all readings and features
+                  <Text style={[TYPE.data, { color: PALETTE.textPrimary }]}>
+                    {pct}%
                   </Text>
                 </View>
+                <View
+                  style={{
+                    height: 4,
+                    backgroundColor: PALETTE.backgroundAlt,
+                    borderRadius: 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <View
+                    style={{
+                      height: "100%",
+                      width: `${pct}%`,
+                      backgroundColor: ELEMENT_COLORS[el],
+                      opacity: 0.85,
+                    }}
+                  />
+                </View>
               </View>
-              <ChevronRight color={COLORS.gold} size={18} />
-            </View>
-          </TouchableOpacity>
-        )}
+            );
+          })}
+          <Text style={[TYPE.body, { marginTop: SPACING.md }]}>
+            {MOCK_CHART.elementSummary}
+          </Text>
+        </Card>
+      </Section>
 
-        {/* Sign Out */}
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="flex-row items-center justify-center gap-2 py-4 mt-4"
-        >
-          <LogOut color={COLORS.danger} size={18} />
-          <Text className="text-danger font-inter-medium">Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      <Section label="Dominant planets">
+        <Card>
+          {MOCK_CHART.dominantPlanets.map((d, idx) => {
+            const meta = PLANETS[d.planet];
+            const isLast = idx === MOCK_CHART.dominantPlanets.length - 1;
+            return (
+              <View
+                key={d.planet}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: SPACING.md,
+                  borderBottomWidth: isLast ? 0 : 1,
+                  borderBottomColor: PALETTE.divider,
+                }}
+              >
+                <Text
+                  style={{
+                    color: meta.color,
+                    fontSize: 20,
+                    width: 28,
+                  }}
+                >
+                  {meta.glyph}
+                </Text>
+                <Text style={[TYPE.cardTitle, { flex: 1 }]}>
+                  {meta.displayName}
+                </Text>
+                <Text style={[TYPE.data, { color: PALETTE.textTertiary }]}>
+                  {d.aspectCount} aspects
+                </Text>
+              </View>
+            );
+          })}
+        </Card>
+      </Section>
+
+      {user && (
+        <Section label="Birth detail">
+          <Card>
+            <Text style={TYPE.bodyPrimary}>{user.birthCity || MOCK_CHART.birthPlace}</Text>
+            <Text style={[TYPE.body, { marginTop: 4 }]}>
+              {user.birthDate
+                ? new Date(user.birthDate).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : MOCK_CHART.birthDate}
+              {user.birthTime ? ` \u00B7 ${user.birthTime}` : ""}
+            </Text>
+          </Card>
+        </Section>
+      )}
+
+      <View style={{ marginTop: SPACING.xxl, alignItems: "flex-start" }}>
+        <Pressable onPress={handleStartOver} hitSlop={6}>
+          <Text style={[TYPE.sectionLabel, { color: PALETTE.danger }]}>
+            Start over
+          </Text>
+        </Pressable>
+        {name ? (
+          <Text style={[TYPE.smallItalic, { marginTop: SPACING.sm }]}>
+            {`Cast for ${name}.`}
+          </Text>
+        ) : null}
+      </View>
+    </Page>
   );
 }

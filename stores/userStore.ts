@@ -1,51 +1,79 @@
 import { create } from "zustand";
-import { OnboardingData, UserProfile } from "../types";
+import { UserProfile } from "../types";
+
+/**
+ * Focus-group build: no auth, no Supabase. Everything lives in this in-memory
+ * (and optionally localStorage-backed) store. Replace with the real session
+ * model once we re-enable accounts.
+ */
 
 interface UserState {
   user: UserProfile | null;
-  session: { accessToken: string; userId: string } | null;
-  isLoading: boolean;
+  name: string | null;
   hasCompletedOnboarding: boolean;
+  isLoading: boolean;
 
-  onboarding: OnboardingData;
-
-  setUser: (user: UserProfile | null) => void;
-  setSession: (session: { accessToken: string; userId: string } | null) => void;
+  // Legacy no-ops kept so existing callers compile during the focus-group build.
+  session: null;
+  setSession: (_: any) => void;
   setLoading: (loading: boolean) => void;
-  setHasCompletedOnboarding: (completed: boolean) => void;
 
-  updateOnboarding: (data: Partial<OnboardingData>) => void;
-  resetOnboarding: () => void;
+  setName: (name: string) => void;
+  setUser: (user: UserProfile | null) => void;
+  setHasCompletedOnboarding: (completed: boolean) => void;
+  reset: () => void;
 }
 
-const DEFAULT_ONBOARDING: OnboardingData = {
-  birthDate: null,
-  birthTime: null,
-  birthTimeUnknown: false,
-  birthCity: "",
-  birthCountryCode: "",
-  birthLat: null,
-  birthLng: null,
-  birthTimezone: "",
-};
+const STORAGE_KEY = "shadonis.focus.profile.v1";
 
-export const useUserStore = create<UserState>((set) => ({
-  user: null,
+function loadFromStorage(): { user: UserProfile | null; name: string | null } {
+  if (typeof window === "undefined") return { user: null, name: null };
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { user: null, name: null };
+    return JSON.parse(raw);
+  } catch {
+    return { user: null, name: null };
+  }
+}
+
+function saveToStorage(user: UserProfile | null, name: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (!user) window.localStorage.removeItem(STORAGE_KEY);
+    else window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ user, name }));
+  } catch {
+    // ignore quota / privacy mode failures
+  }
+}
+
+const initial = loadFromStorage();
+
+export const useUserStore = create<UserState>((set, get) => ({
+  user: initial.user,
+  name: initial.name,
+  hasCompletedOnboarding: !!initial.user,
+  isLoading: false,
   session: null,
-  isLoading: true,
-  hasCompletedOnboarding: false,
 
-  onboarding: { ...DEFAULT_ONBOARDING },
-
-  setUser: (user) => set({ user }),
-  setSession: (session) => set({ session }),
+  setSession: () => {},
   setLoading: (isLoading) => set({ isLoading }),
+
+  setName: (name) => {
+    set({ name });
+    saveToStorage(get().user, name);
+  },
+
+  setUser: (user) => {
+    set({ user, hasCompletedOnboarding: !!user });
+    saveToStorage(user, get().name);
+  },
+
   setHasCompletedOnboarding: (hasCompletedOnboarding) =>
     set({ hasCompletedOnboarding }),
 
-  updateOnboarding: (data) =>
-    set((state) => ({
-      onboarding: { ...state.onboarding, ...data },
-    })),
-  resetOnboarding: () => set({ onboarding: { ...DEFAULT_ONBOARDING } }),
+  reset: () => {
+    set({ user: null, name: null, hasCompletedOnboarding: false });
+    saveToStorage(null, null);
+  },
 }));

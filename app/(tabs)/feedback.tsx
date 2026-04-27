@@ -2,180 +2,161 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MessageCircle, ThumbsUp, ThumbsDown, Send } from "lucide-react-native";
+import { Page, Section } from "../../components/ui/Page";
 import { Button } from "../../components/ui/Button";
-import { supabase } from "../../services/supabase";
 import { useUserStore } from "../../stores/userStore";
-import { COLORS } from "../../constants/theme";
+import { submitFeedback } from "../../services/feedback";
+import { PALETTE, TYPE, SPACING, RADIUS } from "../../constants/designSystem";
 
 export default function FeedbackScreen() {
-  const { session } = useUserStore();
+  const { name, user } = useUserStore();
   const [feelsAccurate, setFeelsAccurate] = useState<boolean | null>(null);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (feelsAccurate === null && !comment.trim()) {
-      Alert.alert(
-        "Share your thoughts",
-        "Please select an accuracy rating or write a comment."
-      );
+      const msg = "Please choose Yes / No or leave a note before sending.";
+      Platform.OS === "web" ? window.alert(msg) : Alert.alert("Almost", msg);
       return;
     }
-
     setLoading(true);
+    setWarning(null);
     try {
-      const { error } = await supabase.from("feedback").insert({
-        user_id: session?.userId,
-        feels_accurate: feelsAccurate,
+      const result = await submitFeedback({
+        name: name ?? null,
+        feelsAccurate,
         comment: comment.trim() || null,
-        screen_context: "feedback_tab",
+        birthCity: user?.birthCity ?? null,
+        birthDate: user?.birthDate ?? null,
       });
-
-      if (error) throw error;
       setSubmitted(true);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to submit feedback";
-      Alert.alert("Error", message);
+      if (!result.delivered) {
+        // Saved locally but the network/Formspree request failed — show a
+        // soft notice so the participant knows we'll need to follow up.
+        setWarning(
+          "Saved offline. We'll sync it next time you're online."
+        );
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  function handleReset() {
-    setFeelsAccurate(null);
-    setComment("");
-    setSubmitted(false);
-  }
-
   if (submitted) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-        <View className="flex-1 items-center justify-center px-6">
-          <View className="w-20 h-20 rounded-full bg-success/20 items-center justify-center mb-6">
-            <Send color={COLORS.success} size={32} />
-          </View>
-          <Text className="text-cream font-inter-bold text-2xl mb-2 text-center">
-            Thank you!
+      <Page title="Thank you, Star.">
+        <Text style={[TYPE.smallItalic, { fontSize: 16, marginTop: -SPACING.md }]}>
+          Your feedback means the world. We read every note that comes in.
+        </Text>
+        {warning && (
+          <Text
+            style={[
+              TYPE.small,
+              { color: PALETTE.accentSoft, marginTop: SPACING.md },
+            ]}
+          >
+            {warning}
           </Text>
-          <Text className="text-cream-muted font-inter text-center mb-8">
-            Your feedback helps Shadonis grow and improve. We read every
-            response.
-          </Text>
+        )}
+        <View style={{ marginTop: SPACING.xl, alignSelf: "flex-start" }}>
           <Button
-            title="Send More Feedback"
+            title="Send another"
             variant="outline"
-            onPress={handleReset}
+            onPress={() => {
+              setSubmitted(false);
+              setComment("");
+              setFeelsAccurate(null);
+              setWarning(null);
+            }}
           />
         </View>
-      </SafeAreaView>
+      </Page>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1 }}
+    >
+      <Page
+        title="Share Your Experience"
+        subtitle="Your insight helps Shadonis refine these readings."
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View className="flex-1 px-6 py-4">
-            <View className="flex-row items-center gap-3 mb-6">
-              <MessageCircle color={COLORS.gold} size={24} />
-              <View>
-                <Text className="text-cream font-inter-bold text-xl">
-                  Feedback
-                </Text>
-                <Text className="text-cream-muted font-inter text-xs">
-                  Help us refine your experience
-                </Text>
-              </View>
-            </View>
-
-            {/* Accuracy */}
-            <Text className="text-cream font-inter-semibold text-base mb-3">
-              Do the readings feel accurate to you?
-            </Text>
-            <View className="flex-row gap-3 mb-6">
-              <TouchableOpacity
-                onPress={() => setFeelsAccurate(true)}
-                className={`flex-1 flex-row items-center justify-center gap-2 py-4 rounded-2xl border-2 ${
-                  feelsAccurate === true
-                    ? "bg-success/10 border-success"
-                    : "bg-surface border-surface-light"
-                }`}
-              >
-                <ThumbsUp
-                  color={feelsAccurate === true ? COLORS.success : COLORS.creamMuted}
-                  size={20}
-                />
-                <Text
-                  className={`font-inter-medium ${
-                    feelsAccurate === true ? "text-success" : "text-cream-muted"
-                  }`}
+        <Section label="Does this feel accurate?">
+          <View style={{ flexDirection: "row", gap: SPACING.md }}>
+            {[
+              { label: "Yes", value: true },
+              { label: "No", value: false },
+            ].map((opt) => {
+              const selected = feelsAccurate === opt.value;
+              return (
+                <Pressable
+                  key={opt.label}
+                  onPress={() => setFeelsAccurate(opt.value)}
+                  style={(state: any) => ({
+                    paddingVertical: 12,
+                    paddingHorizontal: SPACING.xl,
+                    borderRadius: RADIUS.md,
+                    borderWidth: 1,
+                    borderColor: selected
+                      ? PALETTE.accent
+                      : state.hovered
+                      ? PALETTE.surfaceBorderStrong
+                      : PALETTE.surfaceBorder,
+                    backgroundColor: selected ? PALETTE.accentMuted : "transparent",
+                  })}
                 >
-                  Yes
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setFeelsAccurate(false)}
-                className={`flex-1 flex-row items-center justify-center gap-2 py-4 rounded-2xl border-2 ${
-                  feelsAccurate === false
-                    ? "bg-danger/10 border-danger"
-                    : "bg-surface border-surface-light"
-                }`}
-              >
-                <ThumbsDown
-                  color={feelsAccurate === false ? COLORS.danger : COLORS.creamMuted}
-                  size={20}
-                />
-                <Text
-                  className={`font-inter-medium ${
-                    feelsAccurate === false ? "text-danger" : "text-cream-muted"
-                  }`}
-                >
-                  Not really
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Comment */}
-            <Text className="text-cream font-inter-semibold text-base mb-3">
-              Tell us more (optional)
-            </Text>
-            <TextInput
-              className="bg-surface border-2 border-surface-light rounded-2xl p-4 text-cream font-inter text-base min-h-[120px]"
-              placeholder="What's on your mind? Any features you'd love to see?"
-              placeholderTextColor={COLORS.creamMuted}
-              value={comment}
-              onChangeText={setComment}
-              multiline
-              textAlignVertical="top"
-            />
-
-            <View className="mt-8">
-              <Button
-                title="Submit Feedback"
-                onPress={handleSubmit}
-                loading={loading}
-              />
-            </View>
+                  <Text
+                    style={[
+                      TYPE.buttonLabel,
+                      { color: selected ? PALETTE.accent : PALETTE.textSecondary },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </Section>
+
+        <Section label="Tell us more">
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            placeholder="What landed? What missed?"
+            placeholderTextColor={PALETTE.textTertiary}
+            multiline
+            textAlignVertical="top"
+            style={{
+              minHeight: 140,
+              backgroundColor: PALETTE.surface,
+              borderWidth: 1,
+              borderColor: PALETTE.surfaceBorder,
+              borderRadius: RADIUS.md,
+              padding: SPACING.md,
+              color: PALETTE.textPrimary,
+              fontFamily: "Inter_400Regular",
+              fontSize: 14,
+              lineHeight: 22,
+            }}
+          />
+        </Section>
+
+        <View style={{ marginTop: SPACING.xl, alignSelf: "flex-start" }}>
+          <Button title="Send feedback" onPress={handleSubmit} loading={loading} />
+        </View>
+      </Page>
+    </KeyboardAvoidingView>
   );
 }

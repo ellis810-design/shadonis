@@ -1,19 +1,24 @@
+/**
+ * Legacy COLORS export — kept so existing imports keep compiling.
+ * New code should import from `constants/designSystem.ts` instead.
+ */
+import { PALETTE } from "./designSystem";
+
 export const COLORS = {
-  background: "#0B0D17",
-  /** Three.js globe backdrop (near-black blue). */
-  globeBackground: "#040810",
-  globeCardSurface: "rgba(10, 14, 30, 0.94)",
-  globeCardBorder: "rgba(201, 168, 76, 0.35)",
-  surface: "#161B2E",
-  surfaceLight: "#1E2540",
-  gold: "#C9A84C",
-  goldLight: "#E0C878",
+  background: PALETTE.background,
+  globeBackground: "#000000",
+  globeCardSurface: "rgba(10, 10, 10, 0.94)",
+  globeCardBorder: PALETTE.surfaceBorderStrong,
+  surface: PALETTE.surface,
+  surfaceLight: PALETTE.backgroundAlt,
+  gold: PALETTE.accent,
+  goldLight: PALETTE.accentBright,
   purple: "#6B4C9A",
   purpleLight: "#8B6CBB",
-  cream: "#F5F0E8",
-  creamMuted: "#B8B2A8",
-  danger: "#E04B4B",
-  success: "#4CAF50",
+  cream: PALETTE.textPrimary,
+  creamMuted: PALETTE.textSecondary,
+  danger: PALETTE.danger,
+  success: PALETTE.success,
   transparent: "transparent",
 } as const;
 
@@ -37,53 +42,33 @@ export const FONT_SIZE = {
 } as const;
 
 export const BORDER_RADIUS = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  sm: 2,
+  md: 4,
+  lg: 6,
+  xl: 6,
   full: 9999,
 } as const;
 
 export const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#0B0D17" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0B0D17" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#4A4E69" }] },
+  { elementType: "geometry", stylers: [{ color: "#0A0A0A" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0A0A0A" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#5A564E" }] },
   {
     featureType: "administrative.country",
     elementType: "geometry.stroke",
-    stylers: [{ color: "#1E2540" }],
+    stylers: [{ color: "#1A1A1A" }],
   },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#0F1225" }],
+    stylers: [{ color: "#050505" }],
   },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#2A2E45" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#161B2E" }],
-  },
-  {
-    featureType: "road",
-    elementType: "labels",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "poi",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "transit",
-    stylers: [{ visibility: "off" }],
-  },
+  { featureType: "road", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
   {
     featureType: "landscape",
     elementType: "geometry",
-    stylers: [{ color: "#0E1020" }],
+    stylers: [{ color: "#0A0A0A" }],
   },
 ];

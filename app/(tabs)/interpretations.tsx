@@ -1,107 +1,154 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { BookOpen, ArrowLeft } from "lucide-react-native";
-import { PlanetCard } from "../../components/interpretation/PlanetCard";
-import { AngleCard } from "../../components/interpretation/AngleCard";
+import { View, Text, Pressable, LayoutAnimation, Platform, UIManager } from "react-native";
+import { ChevronDown } from "lucide-react-native";
+import { Page, Section } from "../../components/ui/Page";
+import { PALETTE, TYPE, SPACING } from "../../constants/designSystem";
 import { PLANETS, ANGLES } from "../../constants/planets";
 import { STATIC_INTERPRETATIONS } from "../../constants/interpretations";
-import { COLORS } from "../../constants/theme";
-import { Planet } from "../../types";
+import { Planet, Angle } from "../../types";
 
-export default function InterpretationsScreen() {
-  const [selectedPlanet, setSelectedPlanet] = useState<Planet | null>(null);
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const ANGLE_ORDER: Angle[] = ["asc", "ic", "dsc", "mc"];
+
+export default function ReadingsScreen() {
+  const [expanded, setExpanded] = useState<Planet | null>(null);
+
+  function toggle(p: Planet) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((cur) => (cur === p ? null : p));
+  }
 
   const planets = Object.keys(PLANETS) as Planet[];
 
-  if (selectedPlanet) {
-    const meta = PLANETS[selectedPlanet];
-    const interpretations = STATIC_INTERPRETATIONS.filter(
-      (i) => i.planet === selectedPlanet
-    );
-
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-        <View className="flex-1 px-4 py-4">
-          <View className="flex-row items-center gap-3 mb-6">
-            <TouchableOpacity
-              onPress={() => setSelectedPlanet(null)}
-              className="w-10 h-10 rounded-full bg-surface items-center justify-center"
-            >
-              <ArrowLeft color={COLORS.cream} size={20} />
-            </TouchableOpacity>
-            <View
-              className="w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: `${meta.color}20` }}
-            >
-              <Text style={{ color: meta.color, fontSize: 20 }}>
-                {meta.glyph}
-              </Text>
-            </View>
-            <View>
-              <Text className="text-cream font-inter-bold text-xl">
-                {meta.displayName}
-              </Text>
-              <Text className="text-cream-muted font-inter text-xs">
-                {meta.description}
-              </Text>
-            </View>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {interpretations.length > 0 ? (
-              <View className="gap-3">
-                {interpretations.map((interp, idx) => (
-                  <AngleCard
-                    key={idx}
-                    angle={interp.angle}
-                    whatItFeelsLike={interp.whatItFeelsLike}
-                    shortTheme={interp.shortTheme}
-                    bestUseCases={interp.bestUseCases}
-                    watchOuts={interp.watchOuts}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View className="items-center py-12">
-                <Text className="text-cream-muted font-inter text-center">
-                  Interpretations for {meta.displayName} coming soon.
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <View className="flex-1 px-4 py-4">
-        <View className="flex-row items-center gap-3 mb-6">
-          <BookOpen color={COLORS.gold} size={24} />
-          <View>
-            <Text className="text-cream font-inter-bold text-xl">
-              Readings
-            </Text>
-            <Text className="text-cream-muted font-inter text-xs">
-              Explore planetary interpretations by Shadonis
-            </Text>
-          </View>
-        </View>
+    <Page
+      title="Readings"
+      subtitle="Planetary interpretations by Shadonis. Tap a planet to read how each angle expresses through it."
+    >
+      <Section>
+        <View>
+          {planets.map((planet) => {
+            const meta = PLANETS[planet];
+            const isOpen = expanded === planet;
+            const interps = STATIC_INTERPRETATIONS.filter((i) => i.planet === planet);
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View className="gap-3">
-            {planets.map((planet) => (
-              <PlanetCard
+            return (
+              <View
                 key={planet}
-                planet={planet}
-                onPress={() => setSelectedPlanet(planet)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: PALETTE.divider,
+                  borderLeftWidth: 2,
+                  borderLeftColor: isOpen ? meta.color : "transparent",
+                }}
+              >
+                <Pressable
+                  onPress={() => toggle(planet)}
+                  style={(state: any) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: SPACING.lg,
+                    paddingHorizontal: SPACING.md,
+                    backgroundColor: state.hovered ? PALETTE.accentMuted : "transparent",
+                  })}
+                >
+                  <Text
+                    style={{
+                      color: meta.color,
+                      fontSize: 22,
+                      width: 36,
+                      textAlign: "center",
+                    }}
+                  >
+                    {meta.glyph}
+                  </Text>
+                  <View style={{ flex: 1, marginLeft: SPACING.md }}>
+                    <Text style={TYPE.cardTitle}>{meta.displayName}</Text>
+                    <Text style={[TYPE.body, { marginTop: 2 }]}>
+                      {meta.description}
+                    </Text>
+                  </View>
+                  <ChevronDown
+                    color={PALETTE.textTertiary}
+                    size={16}
+                    style={{
+                      transform: [{ rotate: isOpen ? "180deg" : "0deg" }],
+                    }}
+                  />
+                </Pressable>
+
+                {isOpen && (
+                  <View
+                    style={{
+                      paddingHorizontal: SPACING.lg,
+                      paddingBottom: SPACING.xl,
+                    }}
+                  >
+                    {interps.length === 0 ? (
+                      <Text style={[TYPE.smallItalic, { paddingVertical: SPACING.md }]}>
+                        Readings for {meta.displayName} are being written.
+                      </Text>
+                    ) : (
+                      ANGLE_ORDER.filter((a) => interps.find((i) => i.angle === a)).map(
+                        (a) => {
+                          const interp = interps.find((i) => i.angle === a)!;
+                          return (
+                            <View key={a} style={{ marginTop: SPACING.lg }}>
+                              <Text
+                                style={[
+                                  TYPE.sectionLabel,
+                                  { color: meta.color, marginBottom: SPACING.sm },
+                                ]}
+                              >
+                                {ANGLES[a].displayName}
+                              </Text>
+                              <Text
+                                style={[
+                                  TYPE.cardTitleItalic,
+                                  { fontSize: 18, marginBottom: SPACING.sm },
+                                ]}
+                              >
+                                {interp.shortTheme}
+                              </Text>
+                              <Text style={[TYPE.body, { color: PALETTE.textPrimary }]}>
+                                {interp.whatItFeelsLike}
+                              </Text>
+                              <View style={{ marginTop: SPACING.md }}>
+                                <Text style={TYPE.sectionLabel}>Best use</Text>
+                                <Text style={[TYPE.body, { marginTop: 4 }]}>
+                                  {interp.bestUseCases}
+                                </Text>
+                              </View>
+                              <View style={{ marginTop: SPACING.md }}>
+                                <Text style={TYPE.sectionLabel}>Watch out</Text>
+                                <Text style={[TYPE.body, { marginTop: 4 }]}>
+                                  {interp.watchOuts}
+                                </Text>
+                              </View>
+                            </View>
+                          );
+                        }
+                      )
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: PALETTE.divider,
+            }}
+          />
+        </View>
+      </Section>
+    </Page>
   );
 }

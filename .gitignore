@@ -42,3 +42,6 @@ yarn-error.*
 /android
 
 .vercel
+
+# Local-only debug frames extracted from design-reference videos
+.video-frames/

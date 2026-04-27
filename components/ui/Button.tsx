@@ -1,17 +1,24 @@
 import React from "react";
 import {
-  TouchableOpacity,
+  Pressable,
   Text,
   ActivityIndicator,
   ViewStyle,
   TextStyle,
 } from "react-native";
+import {
+  PALETTE,
+  TYPE,
+  SPACING,
+  RADIUS,
+  GLOW,
+} from "../../constants/designSystem";
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "outline" | "ghost";
-  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "outline" | "ghost";
+  size?: "sm" | "md";
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
@@ -28,60 +35,70 @@ export function Button({
   loading = false,
   style,
   textStyle,
-  fullWidth = true,
+  fullWidth = false,
 }: ButtonProps) {
-  const baseClasses = "items-center justify-center rounded-xl";
-  const widthClass = fullWidth ? "w-full" : "";
-
-  const sizeClasses = {
-    sm: "py-2 px-4",
-    md: "py-3.5 px-6",
-    lg: "py-4 px-8",
-  };
-
-  const variantClasses = {
-    primary: "bg-gold",
-    secondary: "bg-purple",
-    outline: "bg-transparent border-2 border-gold",
-    ghost: "bg-transparent",
-  };
-
-  const textVariantClasses = {
-    primary: "text-background font-inter-bold",
-    secondary: "text-cream font-inter-bold",
-    outline: "text-gold font-inter-semibold",
-    ghost: "text-gold font-inter-semibold",
-  };
-
-  const textSizeClasses = {
-    sm: "text-sm",
-    md: "text-base",
-    lg: "text-lg",
-  };
-
   const isDisabled = disabled || loading;
 
+  const padY = size === "sm" ? 9 : 13;
+  const padX = size === "sm" ? SPACING.lg : SPACING.xl + 4;
+
+  const variantStyle: ViewStyle = (() => {
+    switch (variant) {
+      case "primary":
+        return {
+          backgroundColor: PALETTE.cyan,
+          borderWidth: 0,
+          ...({ boxShadow: GLOW.cyanSoft } as any),
+        };
+      case "outline":
+        return {
+          backgroundColor: "transparent",
+          borderWidth: 1,
+          borderColor: PALETTE.accent,
+          ...({ boxShadow: GLOW.pinkSoft } as any),
+        };
+      case "ghost":
+        return { backgroundColor: "transparent", borderWidth: 0 };
+    }
+  })();
+
+  const variantText: TextStyle = (() => {
+    switch (variant) {
+      case "primary":
+        return { color: PALETTE.background };
+      case "outline":
+      case "ghost":
+        return { color: PALETTE.accent };
+    }
+  })();
+
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className={`${baseClasses} ${widthClass} ${sizeClasses[size]} ${variantClasses[variant]} ${isDisabled ? "opacity-50" : "opacity-100"}`}
-      style={style}
-      activeOpacity={0.8}
+      style={(state: any) => [
+        {
+          alignItems: "center",
+          justifyContent: "center",
+          paddingVertical: padY,
+          paddingHorizontal: padX,
+          borderRadius: RADIUS.pill,
+          alignSelf: fullWidth ? "stretch" : "flex-start",
+          opacity: isDisabled ? 0.45 : state.pressed ? 0.85 : 1,
+        },
+        variantStyle,
+        state.hovered && variant === "primary" && { backgroundColor: PALETTE.cyanBright },
+        style,
+      ]}
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "primary" ? "#0B0D17" : "#C9A84C"}
+          color={variant === "primary" ? PALETTE.background : PALETTE.accent}
           size="small"
         />
       ) : (
-        <Text
-          className={`${textVariantClasses[variant]} ${textSizeClasses[size]}`}
-          style={textStyle}
-        >
-          {title}
-        </Text>
+        <Text style={[TYPE.buttonLabel, variantText, textStyle]}>{title}</Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
