@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
-  Text,
-  TouchableOpacity,
   StyleSheet,
   type LayoutChangeEvent,
 } from "react-native";
@@ -483,35 +481,4 @@ export default function AstroGlobe({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.globeBackground },
   gl: { flex: 1 },
-  legend: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: COLORS.globeCardSurface,
-    borderWidth: 1,
-    borderColor: COLORS.globeCardBorder,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    maxWidth: 160,
-    gap: 6,
-  },
-  legendTitle: {
-    color: COLORS.gold,
-    fontSize: 11,
-    fontWeight: "700",
-    marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  legendRowOff: { opacity: 0.45 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendLabel: { color: COLORS.cream, fontSize: 13, fontWeight: "500" },
-  legendLabelOff: { color: COLORS.creamMuted },
 });
