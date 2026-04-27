@@ -16,6 +16,7 @@ import { PlaceAutocomplete } from "../components/ui/PlaceAutocomplete";
 import { useUserStore } from "../stores/userStore";
 import { ensureTimezone, ResolvedPlace } from "../services/places";
 import { getNatalPositions } from "../services/astrology";
+import { parseLocalDate, parseLocalDateTime } from "../services/dateUtils";
 import {
   PALETTE,
   TYPE,
@@ -154,8 +155,10 @@ export default function WelcomeScreen() {
       // on the map page with the same call.
       try {
         const positions = await getNatalPositions(
-          new Date(birthDateStr),
-          birthTimeStr ? new Date(`2000-01-01T${birthTimeStr}`) : null,
+          parseLocalDate(birthDateStr),
+          birthTimeStr
+            ? parseLocalDateTime("2000-01-01", birthTimeStr)
+            : null,
           placeWithTz.lat,
           placeWithTz.lng,
           placeWithTz.shortName,

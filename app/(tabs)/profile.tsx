@@ -14,6 +14,15 @@ import { PALETTE, TYPE, SPACING, ELEMENT_COLORS } from "../../constants/designSy
 import { PLANETS } from "../../constants/planets";
 import { MOCK_CHART } from "../../constants/mockChart";
 import type { NatalPosition } from "../../services/astrology";
+import { parseLocalDate } from "../../services/dateUtils";
+
+function formatBirthTime12h(timeStr: string): string {
+  // Stored as "HH:MM:SS" 24-hour. Render as 12-hour with AM/PM.
+  const [hh = 0, mm = 0] = timeStr.split(":").map((n) => parseInt(n, 10));
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+}
 
 // Sign meta — element / modality / ruling planet for the 12 tropical signs.
 const SIGN_META: Record<string, { element: string; modality: string; ruledBy: string; theme: string }> = {
@@ -247,13 +256,17 @@ export default function ProfileScreen() {
             <Text style={TYPE.bodyPrimary}>{user.birthCity || MOCK_CHART.birthPlace}</Text>
             <Text style={[TYPE.body, { marginTop: 4 }]}>
               {user.birthDate
-                ? new Date(user.birthDate).toLocaleDateString("en-US", {
+                ? parseLocalDate(user.birthDate).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
                     year: "numeric",
                   })
                 : MOCK_CHART.birthDate}
-              {user.birthTime ? ` \u00B7 ${user.birthTime}` : ""}
+              {user.birthTime && !user.birthTimeUnknown
+                ? ` · ${formatBirthTime12h(user.birthTime)}`
+                : user.birthTimeUnknown
+                ? " · time unknown"
+                : ""}
             </Text>
           </Card>
         </Section>

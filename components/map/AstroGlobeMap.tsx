@@ -5,6 +5,7 @@ import { LineInfoSheet } from "./LineInfoSheet";
 import { useMapStore } from "../../stores/mapStore";
 import { useUserStore } from "../../stores/userStore";
 import { getPlanetaryLines } from "../../services/astrology";
+import { parseLocalDate, parseLocalDateTime } from "../../services/dateUtils";
 import { GLOBE_CITIES } from "../../constants/globeCities";
 import { COLORS } from "../../constants/theme";
 
@@ -29,8 +30,8 @@ export function AstroGlobeMap() {
     setLoadingLines(true);
     try {
       const lines = await getPlanetaryLines(
-        new Date(user.birthDate),
-        user.birthTime ? new Date(`2000-01-01T${user.birthTime}`) : null,
+        parseLocalDate(user.birthDate),
+        user.birthTime ? parseLocalDateTime("2000-01-01", user.birthTime) : null,
         user.birthLat,
         user.birthLng,
         user.birthCity,
