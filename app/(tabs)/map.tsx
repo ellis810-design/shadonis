@@ -61,7 +61,7 @@ export default function MapScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: PALETTE.background }}>
+    <View style={{ flex: 1, backgroundColor: PALETTE.background, position: "relative" }}>
       {/* Title strip */}
       <View
         style={{
@@ -95,21 +95,24 @@ export default function MapScreen() {
           gap: SPACING.lg,
         }}
       >
-        {/* Globe pane */}
+        {/* Globe pane — fixed height on mobile (no flex grow), flex on desktop */}
         <View
           style={{
-            flex: 1,
             position: "relative",
             backgroundColor: "#000",
             borderWidth: 1,
             borderColor: PALETTE.surfaceBorder,
             borderRadius: RADIUS.md,
             overflow: "hidden",
-            height: globeHeight,
-            minHeight: globeHeight,
+            ...(isMobile
+              ? { height: globeHeight, width: "100%" }
+              : { flex: 1, minHeight: globeHeight }),
           }}
         >
-          <AstroGlobeMap />
+          {/* Key on width forces a fresh GL context after rotation /
+              breakpoint changes — the GLView's drawing buffer can't be
+              resized after creation, so we remount instead. */}
+          <AstroGlobeMap key={`globe-${Math.round(width)}`} />
           <LineLegend />
           {isMobile && (
             <Pressable
@@ -124,19 +127,20 @@ export default function MapScreen() {
                 borderColor: PALETTE.surfaceBorderStrong,
                 borderRadius: RADIUS.md,
                 backgroundColor: "rgba(10,10,10,0.85)",
+                zIndex: 5,
               }}
             >
               <Text style={[TYPE.buttonLabel, { color: PALETTE.accent }]}>
-                {sidebarOpen ? "Hide" : "Filters"}
+                {sidebarOpen ? "Close" : "Filters"}
               </Text>
             </Pressable>
           )}
         </View>
 
-        {/* Sidebar */}
-        {sidebarOpen && (
+        {/* Desktop sidebar — inline column to the right of the globe */}
+        {!isMobile && sidebarOpen && (
           <Sidebar
-            isMobile={isMobile}
+            isMobile={false}
             selectedGoals={selectedGoals}
             onToggleGoal={toggleGoal}
             compareCity={compareCity}
@@ -145,6 +149,49 @@ export default function MapScreen() {
           />
         )}
       </View>
+
+      {/* Mobile sidebar — full-height drawer overlaying from the right.
+          Lives outside the globe-row container so it never competes with
+          the globe pane for layout space. */}
+      {isMobile && sidebarOpen && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: "85%",
+            maxWidth: 360,
+            backgroundColor: PALETTE.background,
+            borderLeftWidth: 1,
+            borderLeftColor: PALETTE.surfaceBorderStrong,
+            paddingTop: SPACING.xl,
+            paddingHorizontal: SPACING.lg,
+            zIndex: 100,
+            ...({
+              boxShadow: "-12px 0 32px rgba(0,0,0,0.65)",
+            } as any),
+          }}
+        >
+          <Pressable
+            onPress={() => setSidebarOpen(false)}
+            style={{ alignSelf: "flex-end", padding: 6, marginBottom: SPACING.md }}
+            hitSlop={8}
+          >
+            <Text style={[TYPE.buttonLabel, { color: PALETTE.accent }]}>
+              Close
+            </Text>
+          </Pressable>
+          <Sidebar
+            isMobile
+            selectedGoals={selectedGoals}
+            onToggleGoal={toggleGoal}
+            compareCity={compareCity}
+            onCompareCityChange={setCompareCity}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </View>
+      )}
     </View>
   );
 }
