@@ -108,21 +108,18 @@ export default function AstroGlobe({
 }: AstroGlobeProps) {
   const layoutRef = useRef({ width: 1, height: 1 });
   const [glReady, setGlReady] = useState(false);
-  const [legendPlanets, setLegendPlanets] = useState<Planet[]>([]);
 
-  const togglePlanet = useMapStore((s) => s.togglePlanet);
-  const visiblePlanets = useMapStore((s) => s.visiblePlanets);
+  // Hold the GLView render until the parent has a stable, non-zero layout.
+  // Without this, expo-gl creates the WebGL drawing buffer at the initial
+  // (sometimes 0×0 or layout-default) size and can never grow it again,
+  // which is what made the globe render as a tiny tile in the corner.
+  const [stableLayout, setStableLayout] = useState<{ w: number; h: number } | null>(null);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const globeSegments = useMemo(
     () => planetaryLinesToGlobeSegments(planetaryLines),
     [planetaryLines]
   );
-
-  useEffect(() => {
-    const set = new Set<Planet>();
-    for (const l of planetaryLines) set.add(l.planet);
-    setLegendPlanets(Array.from(set));
-  }, [planetaryLines]);
 
   const mergedCities = useMemo(() => {
     const list = [...cities];
@@ -235,13 +232,33 @@ export default function AstroGlobe({
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
+    if (width <= 0 || height <= 0) return;
     layoutRef.current = { width, height };
+
+    // Resize the live renderer for fluid feedback during a drag-resize.
     const ctx = ctxRef.current;
-    if (ctx && width > 0 && height > 0) {
+    if (ctx) {
       ctx.camera.aspect = width / height;
       ctx.camera.updateProjectionMatrix();
       ctx.renderer.setSize(width, height);
     }
+
+    // Debounced remount: when the layout settles to a meaningfully new
+    // size, change the GLView's key so a fresh GL context is created at
+    // the correct drawing-buffer dimensions. (expo-gl can't resize the
+    // backing buffer once it's allocated.)
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      const w = Math.round(width);
+      const h = Math.round(height);
+      setStableLayout((prev) => {
+        if (!prev) return { w, h };
+        if (Math.abs(prev.w - w) > 24 || Math.abs(prev.h - h) > 24) {
+          return { w, h };
+        }
+        return prev;
+      });
+    }, 180);
   }, []);
 
   const onContextCreate = useCallback(
@@ -447,29 +464,18 @@ export default function AstroGlobe({
 
   return (
     <View style={styles.root} onLayout={onLayout}>
-      <GestureDetector gesture={composed}>
-        <GLView style={styles.gl} onContextCreate={onContextCreate} />
-      </GestureDetector>
-
-      <View style={styles.legend} pointerEvents="box-none">
-        <Text style={styles.legendTitle}>Planets</Text>
-        {legendPlanets.map((planet) => {
-          const meta = PLANETS[planet];
-          const on = visiblePlanets.has(planet);
-          return (
-            <TouchableOpacity
-              key={planet}
-              style={[styles.legendRow, !on && styles.legendRowOff]}
-              onPress={() => togglePlanet(planet)}
-            >
-              <View style={[styles.legendDot, { backgroundColor: meta.color }]} />
-              <Text style={[styles.legendLabel, !on && styles.legendLabelOff]}>
-                {meta.displayName}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {/* The GLView only mounts once we have a real layout. Its key
+          changes whenever the layout meaningfully changes, forcing a
+          fresh GL context at the correct drawing-buffer size. */}
+      {stableLayout && (
+        <GestureDetector gesture={composed}>
+          <GLView
+            key={`gl-${stableLayout.w}x${stableLayout.h}`}
+            style={styles.gl}
+            onContextCreate={onContextCreate}
+          />
+        </GestureDetector>
+      )}
     </View>
   );
 }
