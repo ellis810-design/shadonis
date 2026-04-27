@@ -133,6 +133,28 @@ export function AppHeader({ showRibbon = true }: AppHeaderProps) {
 
 function PlanetRibbon({ padX }: { padX: number }) {
   const ribbonName = useUserStore((s) => s.name) ?? MOCK_CHART.name;
+  const livePositions = useUserStore((s) => s.natalPositions);
+
+  // Build the displayed planet rows from live data when available, else
+  // fall back to the on-brand mock so the ribbon never looks empty.
+  const rows = livePositions
+    ? livePositions
+        .filter((p) => p.planet !== null)
+        .map((p) => ({
+          planet: p.planet!,
+          degree: p.degree,
+          minute: p.minute,
+          signGlyph: p.signGlyph,
+          retrograde: p.retrograde,
+        }))
+    : MOCK_CHART.positions.map((p) => ({
+        planet: p.planet,
+        degree: p.degree,
+        minute: p.minute,
+        signGlyph: p.signGlyph,
+        retrograde: !!p.retrograde,
+      }));
+
   return (
     <View
       style={{
@@ -161,7 +183,7 @@ function PlanetRibbon({ padX }: { padX: number }) {
         >
           {`${ribbonName} · Natal`}
         </Text>
-        {MOCK_CHART.positions.map((pos) => {
+        {rows.map((pos) => {
           const meta = PLANETS[pos.planet];
           return (
             <View

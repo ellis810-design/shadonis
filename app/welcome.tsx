@@ -15,6 +15,7 @@ import { Button } from "../components/ui/Button";
 import { PlaceAutocomplete } from "../components/ui/PlaceAutocomplete";
 import { useUserStore } from "../stores/userStore";
 import { ensureTimezone, ResolvedPlace } from "../services/places";
+import { getNatalPositions } from "../services/astrology";
 import {
   PALETTE,
   TYPE,
@@ -66,6 +67,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const setUser = useUserStore((s) => s.setUser);
   const setName = useUserStore((s) => s.setName);
+  const setNatalPositions = useUserStore((s) => s.setNatalPositions);
 
   const { width } = useWindowDimensions();
   const padX = width < 720 ? LAYOUT.pagePadXMobile : LAYOUT.pagePadX;
@@ -146,6 +148,24 @@ export default function WelcomeScreen() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+
+      // Fetch real natal positions (tropical zodiac, Swiss Ephemeris).
+      // Failure here shouldn't block landing on the map — we'll just retry
+      // on the map page with the same call.
+      try {
+        const positions = await getNatalPositions(
+          new Date(birthDateStr),
+          birthTimeStr ? new Date(`2000-01-01T${birthTimeStr}`) : null,
+          placeWithTz.lat,
+          placeWithTz.lng,
+          placeWithTz.shortName,
+          placeWithTz.countryCode || "US",
+          placeWithTz.timezone,
+        );
+        setNatalPositions(positions);
+      } catch (e) {
+        console.warn("[welcome] Natal positions fetch failed:", e);
+      }
 
       router.replace("/(tabs)/map");
     } catch (e) {

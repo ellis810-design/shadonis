@@ -7,7 +7,7 @@ import {
   ApiLineType,
   ApiAstrocartographyResponse,
 } from "../types";
-import { PLANETS } from "../constants/planets";
+import { PLANETS, SIGN_GLYPHS } from "../constants/planets";
 
 const API_BASE = "https://api.astrology-api.io/api/v3";
 const API_KEY = process.env.EXPO_PUBLIC_ASTROLOGY_API_KEY || "";
@@ -277,6 +277,8 @@ async function fetchLiveLines(
       planets: API_PLANET_NAMES,
       line_types: API_LINE_TYPES,
       coordinate_precision: 4,
+      zodiac_type: "Tropic",
+      house_system: "P",
     },
     coordinate_density: 50,
     language: "en",
@@ -337,18 +339,186 @@ async function fetchLiveLines(
   return result;
 }
 
-// Natal chart summary — kept as mock until a birth chart API endpoint is available
+// Natal chart summary — derived from the live positions endpoint.
 export async function getNatalSummary(
-  _birthDate: Date,
-  _birthTime: Date | null,
-  _birthLat: number,
-  _birthLng: number
+  birthDate: Date,
+  birthTime: Date | null,
+  birthLat: number,
+  birthLng: number,
+  birthCity?: string,
+  birthCountryCode?: string,
+  birthTimezone?: string
 ): Promise<NatalChartSummary> {
-  return {
-    sunSign: "Aries",
-    moonSign: "Cancer",
-    risingSign: "Libra",
-    shortSummary:
-      "A fiery trailblazer with a tender emotional core and a natural gift for balancing opposites. You lead with courage but feel deeply.",
+  try {
+    const positions = await getNatalPositions(
+      birthDate, birthTime, birthLat, birthLng,
+      birthCity, birthCountryCode, birthTimezone,
+    );
+    const sun = positions.find((p) => p.planet === "sun");
+    const moon = positions.find((p) => p.planet === "moon");
+    const asc = positions.find((p) => p.body === "Ascendant");
+    return {
+      sunSign: sun ? capitalize(sun.sign) : "—",
+      moonSign: moon ? capitalize(moon.sign) : "—",
+      risingSign: asc ? capitalize(asc.sign) : "—",
+      shortSummary: `Sun in ${sun?.sign ?? "—"}, Moon in ${moon?.sign ?? "—"}, ${asc?.sign ?? "—"} rising.`,
+    };
+  } catch {
+    return {
+      sunSign: "—", moonSign: "—", risingSign: "—",
+      shortSummary: "Natal chart could not be calculated.",
+    };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Natal positions — tropical zodiac, Swiss Ephemeris precision       */
+/* ------------------------------------------------------------------ */
+
+export interface NatalPosition {
+  /** Internal planet name when this body maps to one of our planets,
+      otherwise null (e.g. for Ascendant / Medium_Coeli). */
+  planet: Planet | null;
+  /** API body name as returned by the live endpoint
+      ("Sun" | "Moon" | "Ascendant" | "Medium_Coeli" | ...). */
+  body: string;
+  /** Lower-case full sign name ("leo", "cancer", ...). */
+  sign: string;
+  signAbbr: string;          // "LEO"
+  signGlyph: string;         // "♌"
+  degree: number;            // 0-29 integer degree-within-sign
+  minute: number;            // 0-59 integer minute-within-degree
+  absoluteLongitude: number; // 0-360
+  house: number;
+  retrograde: boolean;
+}
+
+const ACTIVE_POSITION_POINTS = [
+  "Sun", "Moon", "Mercury", "Venus", "Mars",
+  "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+  "Ascendant", "Medium_Coeli",
+];
+
+const SIGN_FROM_API: Record<string, { full: string; abbr: string }> = {
+  Ari: { full: "aries",       abbr: "ARI" },
+  Tau: { full: "taurus",      abbr: "TAU" },
+  Gem: { full: "gemini",      abbr: "GEM" },
+  Can: { full: "cancer",      abbr: "CAN" },
+  Leo: { full: "leo",         abbr: "LEO" },
+  Vir: { full: "virgo",       abbr: "VIR" },
+  Lib: { full: "libra",       abbr: "LIB" },
+  Sco: { full: "scorpio",     abbr: "SCO" },
+  Sag: { full: "sagittarius", abbr: "SAG" },
+  Cap: { full: "capricorn",   abbr: "CAP" },
+  Aqu: { full: "aquarius",    abbr: "AQU" },
+  Pis: { full: "pisces",      abbr: "PIS" },
+};
+
+const BODY_TO_PLANET: Record<string, Planet> = {
+  Sun: "sun", Moon: "moon", Mercury: "mercury", Venus: "venus", Mars: "mars",
+  Jupiter: "jupiter", Saturn: "saturn", Uranus: "uranus", Neptune: "neptune", Pluto: "pluto",
+};
+
+interface ApiPositionsResponse {
+  success: boolean;
+  data?: {
+    positions?: Array<{
+      name: string;
+      sign: string;          // 3-letter ("Leo", "Aqu")
+      degree: number;        // decimal 0.0 - 29.99
+      absolute_longitude: number;
+      house: number;
+      is_retrograde: boolean;
+      speed: number | null;
+    }>;
   };
+}
+
+export async function getNatalPositions(
+  birthDate: Date,
+  birthTime: Date | null,
+  birthLat: number,
+  birthLng: number,
+  birthCity?: string,
+  birthCountryCode?: string,
+  birthTimezone?: string,
+): Promise<NatalPosition[]> {
+  if (!API_KEY) {
+    throw new Error("Astrology API key not configured");
+  }
+
+  const hour = birthTime ? birthTime.getHours() : 12;
+  const minute = birthTime ? birthTime.getMinutes() : 0;
+  const cityName = birthCity ? parseCityName(birthCity) : "New York";
+  const hasCoords = Number.isFinite(birthLat) && Number.isFinite(birthLng);
+
+  const birth_data: Record<string, unknown> = {
+    year: birthDate.getFullYear(),
+    month: birthDate.getMonth() + 1,
+    day: birthDate.getDate(),
+    hour, minute, second: 0,
+    city: cityName,
+    country_code: birthCountryCode || "US",
+  };
+  if (hasCoords) {
+    birth_data.latitude = birthLat;
+    birth_data.longitude = birthLng;
+  }
+  if (birthTimezone && birthTimezone.trim().length > 0) {
+    birth_data.timezone = birthTimezone.trim();
+  }
+
+  const body = {
+    subject: { name: "User", birth_data },
+    options: {
+      house_system: "P",         // Placidus
+      language: "en",
+      tradition: "universal",
+      detail_level: "standard",
+      zodiac_type: "Tropic",     // tropical zodiac
+      active_points: ACTIVE_POSITION_POINTS,
+      precision: 2,
+    },
+  };
+
+  const res = await fetch(`${API_BASE}/data/positions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Positions API error (${res.status}): ${text}`);
+  }
+  const data = (await res.json()) as ApiPositionsResponse;
+  if (!data.success || !data.data?.positions) {
+    throw new Error("Positions API returned no data");
+  }
+
+  return data.data.positions.map((p) => {
+    const signMeta = SIGN_FROM_API[p.sign] ?? { full: p.sign.toLowerCase(), abbr: p.sign.toUpperCase() };
+    const degInt = Math.floor(p.degree);
+    const minInt = Math.round((p.degree - degInt) * 60);
+    return {
+      body: p.name,
+      planet: BODY_TO_PLANET[p.name] ?? null,
+      sign: signMeta.full,
+      signAbbr: signMeta.abbr,
+      signGlyph: SIGN_GLYPHS[signMeta.full] ?? "",
+      degree: degInt,
+      minute: Math.min(minInt, 59),
+      absoluteLongitude: p.absolute_longitude,
+      house: p.house,
+      retrograde: p.is_retrograde,
+    };
+  });
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }

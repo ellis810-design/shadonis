@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -13,18 +13,96 @@ import { Page, Section, Card } from "../../components/ui/Page";
 import { PALETTE, TYPE, SPACING, ELEMENT_COLORS } from "../../constants/designSystem";
 import { PLANETS } from "../../constants/planets";
 import { MOCK_CHART } from "../../constants/mockChart";
+import type { NatalPosition } from "../../services/astrology";
 
-const ANCHORS = [
-  { key: "sun" as const,    label: "Sun",     data: MOCK_CHART.sun,    note: "core identity" },
-  { key: "moon" as const,   label: "Moon",    data: MOCK_CHART.moon,   note: "inner world" },
-  { key: "rising" as const, label: "Rising",  data: MOCK_CHART.rising, note: "first impression" },
+// Sign meta — element / modality / ruling planet for the 12 tropical signs.
+const SIGN_META: Record<string, { element: string; modality: string; ruledBy: string; theme: string }> = {
+  aries:       { element: "fire",  modality: "cardinal", ruledBy: "Mars",    theme: "First through the door — your edge is initiative." },
+  taurus:      { element: "earth", modality: "fixed",    ruledBy: "Venus",   theme: "A grounded sensualist. You hold what others reach for." },
+  gemini:      { element: "air",   modality: "mutable",  ruledBy: "Mercury", theme: "Quick-witted, wide-receiving — you live in the conversation." },
+  cancer:      { element: "water", modality: "cardinal", ruledBy: "Moon",    theme: "An inner tide pulling you toward home, family, and felt safety." },
+  leo:         { element: "fire",  modality: "fixed",    ruledBy: "Sun",     theme: "A radiant centre of gravity — designed to be witnessed." },
+  virgo:       { element: "earth", modality: "mutable",  ruledBy: "Mercury", theme: "Precision in service of meaning. The detail IS the message." },
+  libra:       { element: "air",   modality: "cardinal", ruledBy: "Venus",   theme: "A diplomat for beauty — you orchestrate what feels right." },
+  scorpio:     { element: "water", modality: "fixed",    ruledBy: "Pluto",   theme: "Depth without flinching — you go where most won't." },
+  sagittarius: { element: "fire",  modality: "mutable",  ruledBy: "Jupiter", theme: "A truth-seeker at altitude — the long view is your gift." },
+  capricorn:   { element: "earth", modality: "cardinal", ruledBy: "Saturn",  theme: "Slow architecture of a life that lasts." },
+  aquarius:    { element: "air",   modality: "fixed",    ruledBy: "Uranus",  theme: "An outsider's clarity — you see the system from above." },
+  pisces:      { element: "water", modality: "mutable",  ruledBy: "Neptune", theme: "Permeable, oceanic — you feel the room before it speaks." },
+};
+
+interface Anchor {
+  key: "sun" | "moon" | "rising";
+  label: string;
+  note: string;
+  signKey: string;     // lowercase ("leo", "cancer", ...)
+  signDisplay: string; // capitalized
+  element: string;
+  modality: string;
+  ruledBy: string;
+  theme: string;
+}
+
+function buildAnchors(positions: NatalPosition[] | null): Anchor[] | null {
+  if (!positions) return null;
+  const sun = positions.find((p) => p.body === "Sun");
+  const moon = positions.find((p) => p.body === "Moon");
+  const asc = positions.find((p) => p.body === "Ascendant");
+  if (!sun || !moon || !asc) return null;
+
+  function build(
+    key: Anchor["key"],
+    label: string,
+    note: string,
+    pos: NatalPosition,
+  ): Anchor {
+    const meta = SIGN_META[pos.sign] ?? {
+      element: "—", modality: "—", ruledBy: "—",
+      theme: "Sign metadata unavailable.",
+    };
+    return {
+      key, label, note,
+      signKey: pos.sign,
+      signDisplay: pos.sign.charAt(0).toUpperCase() + pos.sign.slice(1),
+      ...meta,
+    };
+  }
+
+  return [
+    build("sun",    "Sun",    "core identity",     sun),
+    build("moon",   "Moon",   "inner world",       moon),
+    build("rising", "Rising", "first impression",  asc),
+  ];
+}
+
+// Mock fallback used only when the live positions haven't been fetched yet.
+const MOCK_ANCHORS: Anchor[] = [
+  { key: "sun", label: "Sun", note: "core identity",
+    signKey: MOCK_CHART.sun.sign.toLowerCase(), signDisplay: MOCK_CHART.sun.sign,
+    element: MOCK_CHART.sun.element, modality: MOCK_CHART.sun.modality,
+    ruledBy: MOCK_CHART.sun.rulingPlanet, theme: MOCK_CHART.sun.theme },
+  { key: "moon", label: "Moon", note: "inner world",
+    signKey: MOCK_CHART.moon.sign.toLowerCase(), signDisplay: MOCK_CHART.moon.sign,
+    element: MOCK_CHART.moon.element, modality: MOCK_CHART.moon.modality,
+    ruledBy: MOCK_CHART.moon.rulingPlanet, theme: MOCK_CHART.moon.theme },
+  { key: "rising", label: "Rising", note: "first impression",
+    signKey: MOCK_CHART.rising.sign.toLowerCase(), signDisplay: MOCK_CHART.rising.sign,
+    element: MOCK_CHART.rising.element, modality: MOCK_CHART.rising.modality,
+    ruledBy: MOCK_CHART.rising.rulingPlanet, theme: MOCK_CHART.rising.theme },
 ];
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, name, reset } = useUserStore();
+  const { user, name, reset, natalPositions } = useUserStore();
   const { width } = useWindowDimensions();
   const stack = width < 720;
+
+  // Real anchors when the API has answered, otherwise the mock fallback.
+  const anchors = useMemo(
+    () => buildAnchors(natalPositions) ?? MOCK_ANCHORS,
+    [natalPositions]
+  );
+  const isLive = !!natalPositions;
 
   async function handleStartOver() {
     const confirm = () =>
@@ -49,16 +127,16 @@ export default function ProfileScreen() {
       title="Profile"
       subtitle={"A portrait of your natal chart \u2014 the anchors, patterns, and planetary weight that define your cosmic recipe."}
     >
-      <Section label="Anchors">
+      <Section label={isLive ? "Anchors · Tropical zodiac" : "Anchors · sample"}>
         <View style={{ flexDirection: stack ? "column" : "row", gap: SPACING.md }}>
-          {ANCHORS.map((a) => (
+          {anchors.map((a) => (
             <View key={a.key} style={{ flex: 1 }}>
               <Card>
                 <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.md }]}>
                   {a.label}
                 </Text>
                 <Text style={[TYPE.cardTitle, { fontSize: 28 }]}>
-                  {a.data.sign}
+                  {a.signDisplay}
                 </Text>
                 <Text style={[TYPE.small, { marginTop: 2 }]}>{a.note}</Text>
                 <View
@@ -69,10 +147,10 @@ export default function ProfileScreen() {
                   }}
                 />
                 <Text style={TYPE.small}>
-                  {`${a.data.element} \u00B7 ${a.data.modality} \u00B7 ruled by ${a.data.rulingPlanet}`}
+                  {`${a.element} · ${a.modality} · ruled by ${a.ruledBy}`}
                 </Text>
                 <Text style={[TYPE.smallItalic, { marginTop: SPACING.md }]}>
-                  {a.data.theme}
+                  {a.theme}
                 </Text>
               </Card>
             </View>
