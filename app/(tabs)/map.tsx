@@ -207,27 +207,33 @@ function LineLegend() {
         borderWidth: 1,
         borderColor: PALETTE.surfaceBorder,
         borderRadius: RADIUS.md,
-        paddingVertical: SPACING.sm,
-        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.xs + 2,
+        paddingHorizontal: SPACING.sm + 2,
       }}
     >
-      <Text style={[TYPE.sectionLabel, { marginBottom: 6 }]}>Line types</Text>
-      {LINE_LEGEND.map((row) => (
-        <View
-          key={row.code}
-          style={{ flexDirection: "row", marginVertical: 1 }}
-        >
+      <Text style={[TYPE.sectionLabel, { marginBottom: 4, fontSize: 10, letterSpacing: 1.4 }]}>
+        Line types
+      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 10,
+          maxWidth: 220,
+        }}
+      >
+        {LINE_LEGEND.map((row) => (
           <Text
+            key={row.code}
             style={[
               TYPE.data,
-              { color: PALETTE.accent, width: 38 },
+              { color: PALETTE.accent, fontSize: 12, letterSpacing: 0.5 },
             ]}
           >
             {row.code.toUpperCase()}
           </Text>
-          <Text style={TYPE.small}>{row.meaning}</Text>
-        </View>
-      ))}
+        ))}
+      </View>
     </View>
   );
 }

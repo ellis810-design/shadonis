@@ -134,7 +134,7 @@ export default function ProfileScreen() {
   return (
     <Page
       title="Profile"
-      subtitle={"A portrait of your natal chart \u2014 the anchors, patterns, and planetary weight that define your cosmic recipe."}
+      subtitle={"A deep dive into your chart"}
     >
       <Section label={isLive ? "Anchors · Tropical zodiac" : "Anchors · sample"}>
         <View style={{ flexDirection: stack ? "column" : "row", gap: SPACING.md }}>

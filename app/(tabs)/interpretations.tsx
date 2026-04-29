@@ -28,7 +28,7 @@ export default function ReadingsScreen() {
 
   return (
     <Page
-      title="Readings"
+      title="Your Astrocartography"
       subtitle="Planetary interpretations by Shadonis. Tap a planet to read how each angle expresses through it."
     >
       <Section>

@@ -22,7 +22,9 @@ const LINE_RADIUS = 1.018;
 const ATMOSPHERE_RADIUS = 1.015;
 const CAMERA_Z_MIN = 1.5;
 const CAMERA_Z_MAX = 5;
-const AUTO_ROTATE = 0.0006;
+const AUTO_ROTATE = 0.00025;
+/** Drag-to-spin sensitivity. Lower = calmer. */
+const PAN_SENSITIVITY = 0.0014;
 const DAMPING = 0.96;
 const ROT_X_CLAMP = 1.2;
 
@@ -440,8 +442,8 @@ export default function AstroGlobe({
       const dx = e.translationX - lastPanRef.current.x;
       const dy = e.translationY - lastPanRef.current.y;
       lastPanRef.current = { x: e.translationX, y: e.translationY };
-      velocityRef.current.y -= dx * 0.004;
-      velocityRef.current.x += dy * 0.004;
+      velocityRef.current.y -= dx * PAN_SENSITIVITY;
+      velocityRef.current.x += dy * PAN_SENSITIVITY;
     })
     .onEnd((e) => {
       if (Math.hypot(e.translationX, e.translationY) < 14) {
