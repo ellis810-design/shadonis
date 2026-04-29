@@ -23,7 +23,7 @@ import { useUserStore } from "../../stores/userStore";
 const TABS = [
   { label: "Profile", path: "/(tabs)/profile" },
   { label: "Map", path: "/(tabs)/map" },
-  { label: "Readings", path: "/(tabs)/interpretations" },
+  { label: "Chart", path: "/(tabs)/interpretations" },
   { label: "Feedback", path: "/(tabs)/feedback" },
 ] as const;
 

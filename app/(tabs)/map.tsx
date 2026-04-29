@@ -74,11 +74,10 @@ export default function MapScreen() {
         }}
       >
         <Text style={[TYPE.pageTitle, { fontSize: 28 }]}>
-          Personal AstroCartography
+          Your Astrocartography
         </Text>
         <Text style={[TYPE.pageSubtitle, { marginTop: SPACING.xs, maxWidth: 720 }]}>
-          Coloured curves trace where each planet sat on one of the four angles
-          at the moment you were born.
+          Your chart in relation to planet earth.
         </Text>
       </View>
 

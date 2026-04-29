@@ -245,10 +245,10 @@ export default function WelcomeScreen() {
           <Text
             style={[
               TYPE.pageTitle,
-              { fontSize: 36, lineHeight: 44, textAlign: "center" },
+              { fontSize: 32, lineHeight: 40, textAlign: "center" },
             ]}
           >
-            Cast a Chart
+            {"Hi Star, Let’s pull your chart"}
           </Text>
           <Text
             style={[
@@ -416,7 +416,7 @@ export default function WelcomeScreen() {
 
           <View style={{ marginTop: SPACING.lg }}>
             <Button
-              title={submitting ? "Casting…" : "Cast this chart"}
+              title={submitting ? "Pulling…" : "Pull chart"}
               onPress={handleSubmit}
               loading={submitting}
               fullWidth
