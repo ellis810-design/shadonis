@@ -169,7 +169,9 @@ export default function WelcomeScreen() {
         console.warn("[welcome] Natal positions fetch failed:", e);
       }
 
-      router.replace("/(tabs)/map");
+      // Land on Profile so the participant sees their natal chart
+      // confirmation first, then explores the map from there.
+      router.replace("/(tabs)/profile");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Something went wrong casting your chart."

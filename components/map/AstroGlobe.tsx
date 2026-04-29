@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
+  Text,
+  Pressable,
   StyleSheet,
   type LayoutChangeEvent,
 } from "react-native";
@@ -11,6 +13,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import type { PlanetaryLine, Planet, GlobeCity } from "../../types";
 import { COLORS } from "../../constants/theme";
 import { PLANETS } from "../../constants/planets";
+import { PALETTE } from "../../constants/designSystem";
 import { useMapStore } from "../../stores/mapStore";
 import { latLngToVector3 } from "./globe/globeMath";
 import { planetaryLinesToGlobeSegments, samePlanetarySegment } from "./globe/lineAdapters";
@@ -27,6 +30,8 @@ const AUTO_ROTATE = 0.00025;
 const PAN_SENSITIVITY = 0.0014;
 const DAMPING = 0.96;
 const ROT_X_CLAMP = 1.2;
+/** How much each tap of the +/− zoom button moves the camera. */
+const ZOOM_BUTTON_STEP = 0.35;
 
 // Atmosphere is now a plain back-faced MeshBasicMaterial (see below).
 // The previous custom ShaderMaterial caused intermittent shader-compile
@@ -462,6 +467,11 @@ export default function AstroGlobe({
 
   const composed = Gesture.Simultaneous(panGesture, pinchGesture);
 
+  const zoomBy = useCallback((delta: number) => {
+    const next = cameraZRef.current + delta;
+    cameraZRef.current = Math.max(CAMERA_Z_MIN, Math.min(CAMERA_Z_MAX, next));
+  }, []);
+
   return (
     <View style={styles.root} onLayout={onLayout}>
       {/* The GLView only mounts once we have a real layout. Its key
@@ -476,11 +486,75 @@ export default function AstroGlobe({
           />
         </GestureDetector>
       )}
+
+      {/* Zoom controls — work the same on web (click) and touch. The
+          stack is bottom-right of the globe pane, balancing the Line
+          Types legend at bottom-left. */}
+      <View style={styles.zoomStack} pointerEvents="box-none">
+        <ZoomButton label="+" onPress={() => zoomBy(-ZOOM_BUTTON_STEP)} />
+        <View style={styles.zoomDivider} />
+        <ZoomButton label="−" onPress={() => zoomBy(ZOOM_BUTTON_STEP)} />
+      </View>
     </View>
+  );
+}
+
+interface ZoomButtonProps {
+  label: string;
+  onPress: () => void;
+}
+
+function ZoomButton({ label, onPress }: ZoomButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      style={(state: any) => [
+        styles.zoomBtn,
+        state.hovered && styles.zoomBtnHover,
+        state.pressed && styles.zoomBtnPressed,
+      ]}
+    >
+      <Text style={styles.zoomBtnText}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.globeBackground },
   gl: { flex: 1 },
+  zoomStack: {
+    position: "absolute",
+    right: 16,
+    bottom: 16,
+    backgroundColor: "rgba(10,10,10,0.78)",
+    borderWidth: 1,
+    borderColor: PALETTE.surfaceBorder,
+    borderRadius: 8,
+    overflow: "hidden",
+    width: 36,
+  },
+  zoomDivider: {
+    height: 1,
+    backgroundColor: PALETTE.surfaceBorder,
+  },
+  zoomBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoomBtnHover: {
+    backgroundColor: PALETTE.accentMuted,
+  },
+  zoomBtnPressed: {
+    backgroundColor: "rgba(255,124,188,0.20)",
+  },
+  zoomBtnText: {
+    color: PALETTE.accent,
+    fontSize: 18,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 20,
+    textAlign: "center",
+  },
 });
