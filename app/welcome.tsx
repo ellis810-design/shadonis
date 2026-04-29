@@ -23,7 +23,6 @@ import {
   SPACING,
   RADIUS,
   LAYOUT,
-  FONTS,
 } from "../constants/designSystem";
 
 const MONTHS = [
@@ -200,24 +199,45 @@ export default function WelcomeScreen() {
             <Image
               source={require("../assets/shadonis-logo.png")}
               style={{
-                width: 84,
-                height: 84,
+                width: 76,
+                height: 76,
                 resizeMode: "contain",
                 marginBottom: SPACING.lg,
               }}
             />
-            <Text
+
+            {/* Wordmark — uses the brand image so the planet + nebula
+                composition reads as one continuous starfield with the
+                page bg. Soft mask via radial fade on the bottom edge
+                hides the seam between the image and the body copy. */}
+            <View
               style={{
-                fontFamily: FONTS.display,
-                fontSize: 56,
-                color: PALETTE.textPrimary,
-                letterSpacing: 6,
-                textTransform: "uppercase",
-                textAlign: "center",
+                width: "100%",
+                maxWidth: 520,
+                aspectRatio: 1280 / 720,
+                marginBottom: SPACING.md,
+                borderRadius: RADIUS.lg,
+                overflow: "hidden",
+                ...({
+                  boxShadow:
+                    "0 0 60px rgba(255, 93, 168, 0.35), 0 0 120px rgba(127, 231, 229, 0.15)",
+                  maskImage:
+                    "radial-gradient(ellipse 100% 80% at 50% 50%, #000 60%, transparent 100%)",
+                  WebkitMaskImage:
+                    "radial-gradient(ellipse 100% 80% at 50% 50%, #000 60%, transparent 100%)",
+                } as any),
               }}
             >
-              Shadonis
-            </Text>
+              <Image
+                source={require("../assets/shadonis-wordmark.png")}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  resizeMode: "cover",
+                }}
+                accessibilityLabel="Shadonis"
+              />
+            </View>
           </View>
 
           <Text

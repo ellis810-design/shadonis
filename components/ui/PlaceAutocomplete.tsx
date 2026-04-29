@@ -33,7 +33,21 @@ export function PlaceAutocomplete({
   const [resolving, setResolving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // True for one render cycle right after the user picks a suggestion.
+  // The value-change-driven search useEffect skips its work for that
+  // tick, so the dropdown doesn't reopen with the freshly-resolved
+  // city as the new query (which is what was forcing a second tap).
+  const justPickedRef = useRef(false);
+
+  // Set on touch-down inside a suggestion. Used to keep the dropdown
+  // alive past the input's blur event so the press can complete.
+  const pressingRef = useRef(false);
+
   useEffect(() => {
+    if (justPickedRef.current) {
+      justPickedRef.current = false;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.trim().length < 2) {
       setSuggestions([]);
@@ -56,6 +70,9 @@ export function PlaceAutocomplete({
   }, [value]);
 
   async function handlePick(s: PlaceSuggestion) {
+    // Suppress the next value-driven search triggered by setting the
+    // input to the resolved full name.
+    justPickedRef.current = true;
     setResolving(true);
     try {
       const place = await resolvePlace(s);
@@ -66,6 +83,7 @@ export function PlaceAutocomplete({
     } catch {
       // swallow — user can pick another
     } finally {
+      pressingRef.current = false;
       setResolving(false);
     }
   }
@@ -75,11 +93,19 @@ export function PlaceAutocomplete({
       <TextInput
         value={value}
         onChangeText={(t) => {
+          // User is actively typing — re-enable searching and clear the
+          // just-picked guard so subsequent edits do trigger results.
+          justPickedRef.current = false;
           onChangeText(t);
           setOpen(true);
         }}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 180)}
+        onBlur={() => {
+          // Let any in-flight press finish before closing.
+          setTimeout(() => {
+            if (!pressingRef.current) setOpen(false);
+          }, 280);
+        }}
         placeholder={placeholder}
         placeholderTextColor={PALETTE.textTertiary}
         autoCorrect={false}
@@ -125,11 +151,22 @@ export function PlaceAutocomplete({
           {suggestions.slice(0, 6).map((s) => (
             <Pressable
               key={s.id}
-              onPress={() => handlePick(s)}
+              // onPressIn fires on touch-down (web: mousedown / touchstart),
+              // *before* the input's blur event. Doing the work here
+              // sidesteps the blur-closes-dropdown-before-press race that
+              // was forcing users to tap a suggestion twice.
+              onPressIn={() => {
+                pressingRef.current = true;
+                handlePick(s);
+              }}
+              onPress={() => {
+                // Fallback for runtimes that fire onPress without onPressIn.
+                if (!pressingRef.current) handlePick(s);
+              }}
               style={(state: any) => ({
-                paddingVertical: SPACING.sm,
+                paddingVertical: SPACING.sm + 2,
                 paddingHorizontal: SPACING.md,
-                backgroundColor: state.hovered
+                backgroundColor: state.hovered || state.pressed
                   ? PALETTE.accentMuted
                   : "transparent",
               })}
