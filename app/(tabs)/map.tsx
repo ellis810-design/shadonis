@@ -53,38 +53,48 @@ export default function MapScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: PALETTE.background, position: "relative" }}>
-      {/* Title strip */}
-      <View
-        style={{
-          paddingHorizontal: isMobile ? LAYOUT.pagePadXMobile : LAYOUT.pagePadX,
-          paddingTop: SPACING.lg,
-          paddingBottom: SPACING.md,
-          maxWidth: LAYOUT.maxWidth,
-          width: "100%",
-          alignSelf: "center",
-        }}
+      {/* Scroll wrapper — on mobile the title + globe pane easily exceed
+          the viewport; without this the page can't be panned to see the
+          full globe / line legend. The mobile drawer below is absolute-
+          positioned outside this ScrollView so it stays pinned to the
+          viewport regardless of scroll. */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: SPACING.xl }}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={[TYPE.pageTitle, { fontSize: 28 }]}>
-          Your Astrocartography
-        </Text>
-        <Text style={[TYPE.pageSubtitle, { marginTop: SPACING.xs, maxWidth: 720 }]}>
-          Your chart in relation to planet earth. Click each line to explore
-        </Text>
-      </View>
+        {/* Title strip */}
+        <View
+          style={{
+            paddingHorizontal: isMobile ? LAYOUT.pagePadXMobile : LAYOUT.pagePadX,
+            paddingTop: SPACING.lg,
+            paddingBottom: SPACING.md,
+            maxWidth: LAYOUT.maxWidth,
+            width: "100%",
+            alignSelf: "center",
+          }}
+        >
+          <Text style={[TYPE.pageTitle, { fontSize: 28 }]}>
+            Your Astrocartography
+          </Text>
+          <Text style={[TYPE.pageSubtitle, { marginTop: SPACING.xs, maxWidth: 720 }]}>
+            Your chart in relation to planet earth. Click each line to explore
+          </Text>
+        </View>
 
-      {/* Globe + sidebar */}
-      <View
-        style={{
-          flex: 1,
-          flexDirection: isMobile ? "column" : "row",
-          maxWidth: LAYOUT.maxWidth,
-          width: "100%",
-          alignSelf: "center",
-          paddingHorizontal: isMobile ? 0 : LAYOUT.pagePadX,
-          paddingBottom: SPACING.xl,
-          gap: SPACING.lg,
-        }}
-      >
+        {/* Globe + sidebar */}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: isMobile ? "column" : "row",
+            maxWidth: LAYOUT.maxWidth,
+            width: "100%",
+            alignSelf: "center",
+            paddingHorizontal: isMobile ? 0 : LAYOUT.pagePadX,
+            paddingBottom: SPACING.xl,
+            gap: SPACING.lg,
+          }}
+        >
         {/* Globe pane — fixed height on mobile (no flex grow), flex on desktop */}
         <View
           style={{
@@ -138,7 +148,8 @@ export default function MapScreen() {
             onClose={() => setSidebarOpen(false)}
           />
         )}
-      </View>
+        </View>
+      </ScrollView>
 
       {/* Mobile sidebar — full-height drawer overlaying from the right.
           Lives outside the globe-row container so it never competes with
