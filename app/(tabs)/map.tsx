@@ -299,30 +299,9 @@ function Sidebar({
         })}
       </View>
 
-      <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.sm }]}>
-        Best-match places
-      </Text>
-      <Text style={[TYPE.smallItalic, { marginBottom: SPACING.xl }]}>
-        Pick a life goal above to surface the cities your chart most supports.
-      </Text>
-
-      <Text style={[TYPE.sectionLabel, { marginBottom: SPACING.sm }]}>
-        Compare places
-      </Text>
-      <TextInput
-        value={compareCity}
-        onChangeText={onCompareCityChange}
-        placeholder={"Type a city\u2026"}
-        placeholderTextColor={PALETTE.textTertiary}
-        style={{
-          borderBottomWidth: 1,
-          borderBottomColor: PALETTE.surfaceBorderStrong,
-          paddingVertical: SPACING.sm,
-          color: PALETTE.textPrimary,
-          fontFamily: "Inter_400Regular",
-          fontSize: 14,
-        }}
-      />
+      {/* Best-match places + Compare places hidden for the focus-group
+          build \u2014 kept in source so we can re-enable when the matching
+          logic is ready. */}
     </ScrollView>
   );
 }

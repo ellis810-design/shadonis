@@ -348,9 +348,17 @@ export default function AstroGlobe({
       const ndcX = (nx / width) * 2 - 1;
       const ndcY = -(ny / height) * 2 + 1;
       ctx.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), ctx.camera);
-      ctx.raycaster.params.Line = { threshold: 0.03 };
+
+      // Hit-test threshold scales with camera distance so the lines
+      // stay easy to tap regardless of zoom. At z=2.8 (default) →
+      // ~0.07 world units, ~7% of the globe radius.
+      const z = ctx.camera.position.z;
+      ctx.raycaster.params.Line = { threshold: 0.025 * z };
+
       const hits = ctx.raycaster.intersectObjects(ctx.lineMeshes, false);
       if (hits.length > 0) {
+        // Prefer the closest hit *to the camera* (i.e. on the visible
+        // hemisphere) — Three already returns hits sorted near-to-far.
         const pl = hits[0].object.userData.planetaryLine as PlanetaryLine;
         onLineSelect?.(pl);
       } else {
@@ -576,7 +584,11 @@ export default function AstroGlobe({
       velocityRef.current.x += dy * PAN_SENSITIVITY;
     })
     .onEnd((e) => {
-      if (Math.hypot(e.translationX, e.translationY) < 14) {
+      // Treat anything under ~22px of total movement as a tap, not a drag.
+      // Mobile fingers and trackpad clicks both produce small incidental
+      // motion; the old 14px threshold made the picker miss on real
+      // taps that wobbled slightly.
+      if (Math.hypot(e.translationX, e.translationY) < 22) {
         handlePick(e.x, e.y);
       }
     });
