@@ -90,7 +90,7 @@ export default function FeedbackScreen() {
     >
       <Page
         title="Share Your Experience"
-        subtitle="Your insight helps Shadonis refine these readings."
+        subtitle="Your insight helps Shadonis refine the app"
       >
         <Section label="Does this feel accurate?">
           <View style={{ flexDirection: "row", gap: SPACING.md }}>

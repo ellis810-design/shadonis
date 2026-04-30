@@ -62,24 +62,28 @@ function buildLineMeshes(
         color: seg.color,
         dashSize: 0.03,
         gapSize: 0.015,
-        transparent: true,
+        transparent: false,
         opacity: 1,
-        depthTest: false,
+        depthTest: true,
+        depthWrite: true,
       });
       line = new THREE.Line(geom, mat);
       line.computeLineDistances();
     } else {
       const mat = new THREE.LineBasicMaterial({
         color: seg.color,
-        transparent: true,
+        transparent: false,
         opacity: 1,
-        depthTest: false,
+        depthTest: true,
+        depthWrite: true,
       });
       line = new THREE.Line(geom, mat);
     }
     line.userData.planetaryLine = seg.planetaryLine;
     line.userData.planet = seg.planetaryLine.planet;
-    line.renderOrder = 10;
+    // Render *after* the opaque earth so the depth buffer is populated
+    // when the lines draw — back-of-globe segments get correctly hidden.
+    line.renderOrder = 1;
     meshes.push(line);
   }
   return meshes;
@@ -170,14 +174,24 @@ export default function AstroGlobe({
     for (const line of ctx.lineMeshes) {
       const pl = line.userData.planetaryLine as PlanetaryLine;
       const mat = line.material as THREE.LineBasicMaterial | THREE.LineDashedMaterial;
-      if (!selectedLine) {
+
+      if (!selectedLine || samePlanetarySegment(selectedLine, pl)) {
+        // Active state — fully opaque, depth-tested so the back of the
+        // globe occludes lines on the far side.
         mat.opacity = 1;
-      } else if (samePlanetarySegment(selectedLine, pl)) {
-        mat.opacity = 1;
+        mat.transparent = false;
+        mat.depthTest = true;
+        mat.depthWrite = true;
       } else {
+        // Dimmed (a different line is selected). We need transparency
+        // for the 0.12 fade, but keep depth-test on so far-side
+        // segments still get hidden by the globe.
         mat.opacity = 0.12;
+        mat.transparent = true;
+        mat.depthTest = true;
+        mat.depthWrite = false;
       }
-      mat.transparent = true;
+      mat.needsUpdate = true;
     }
   }, [selectedLine]);
 
