@@ -68,7 +68,7 @@ export default function MapScreen() {
           Your Astrocartography
         </Text>
         <Text style={[TYPE.pageSubtitle, { marginTop: SPACING.xs, maxWidth: 720 }]}>
-          Your chart in relation to planet earth.
+          Your chart in relation to planet earth. Click each line to explore
         </Text>
       </View>
 
