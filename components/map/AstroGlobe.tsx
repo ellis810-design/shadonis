@@ -48,22 +48,43 @@ function makeTextSprite(
   scale: { w: number; h: number } = { w: 0.18, h: 0.045 },
 ): import("three").Sprite | null {
   if (typeof document === "undefined") return null;
+
+  // Pass "glyph\nCODE" to render two stacked lines (used for planet
+  // line labels: ☉ on top, MC under). Single line otherwise.
+  const lines = text.split("\n");
+  const isStacked = lines.length > 1;
+
   const dpr = 2;
   const canvas = document.createElement("canvas");
   canvas.width = 256 * dpr;
-  canvas.height = 64 * dpr;
+  canvas.height = (isStacked ? 110 : 64) * dpr;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   ctx.scale(dpr, dpr);
-  ctx.font = '600 26px "Inter", system-ui, sans-serif';
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  // Dark stroke for legibility over light landmasses + bright water.
   ctx.lineWidth = 5;
   ctx.strokeStyle = "rgba(0,0,0,0.85)";
-  ctx.strokeText(text, 128, 32);
-  ctx.fillStyle = color;
-  ctx.fillText(text, 128, 32);
+
+  if (isStacked) {
+    // Top: planet glyph (a touch larger so the unicode symbol reads at
+    // a similar visual weight as the angle code below it).
+    ctx.font = '600 36px "Inter", "Apple Symbols", "Segoe UI Symbol", system-ui, sans-serif';
+    ctx.strokeText(lines[0], 128, 30);
+    ctx.fillStyle = color;
+    ctx.fillText(lines[0], 128, 30);
+
+    // Bottom: angle code
+    ctx.font = '700 24px "Inter", system-ui, sans-serif';
+    ctx.strokeText(lines[1], 128, 78);
+    ctx.fillStyle = color;
+    ctx.fillText(lines[1], 128, 78);
+  } else {
+    ctx.font = '600 26px "Inter", system-ui, sans-serif';
+    ctx.strokeText(text, 128, 32);
+    ctx.fillStyle = color;
+    ctx.fillText(text, 128, 32);
+  }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
@@ -76,7 +97,10 @@ function makeTextSprite(
     depthWrite: false,
   });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(scale.w, scale.h, 1);
+  // Stacked labels are roughly 1.7× taller than single-line ones; the
+  // canvas height ratio above is 110/64 ≈ 1.72.
+  const finalH = isStacked ? scale.h * 1.7 : scale.h;
+  sprite.scale.set(scale.w, finalH, 1);
   sprite.renderOrder = 2;
   return sprite;
 }
@@ -133,15 +157,22 @@ function buildLineMeshes(
     // when the lines draw — back-of-globe segments get correctly hidden.
     line.renderOrder = 1;
 
-    // Tag the line with its angle code (MC / IC / ASC / DSC). Sprite is
-    // a child of the line so it inherits the line's visibility toggling.
+    // Tag the line with the planet's glyph stacked above its angle code
+    // (e.g. ☉ over MC). Sprite is a child of the line so it inherits
+    // the line's visibility toggling and depth-test occlusion.
+    const planetMeta = PLANETS[seg.planetaryLine.planet];
+    const planetGlyph = planetMeta?.glyph ?? "";
     const angleLabel = seg.planetaryLine.angle.toUpperCase();
     const colorHex = "#" + seg.color.toString(16).padStart(6, "0");
-    const labelSprite = makeTextSprite(THREE, angleLabel, colorHex);
+    const labelSprite = makeTextSprite(
+      THREE,
+      `${planetGlyph}\n${angleLabel}`,
+      colorHex,
+    );
     if (labelSprite) {
       const mid = pts[Math.floor(pts.length / 2)];
       // Push the label slightly off the surface so it sits above the line.
-      const out = mid.clone().normalize().multiplyScalar(LINE_RADIUS + 0.025);
+      const out = mid.clone().normalize().multiplyScalar(LINE_RADIUS + 0.035);
       labelSprite.position.copy(out);
       line.add(labelSprite);
     }
