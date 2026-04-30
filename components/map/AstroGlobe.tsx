@@ -33,6 +33,54 @@ const ROT_X_CLAMP = 1.2;
 /** How much each tap of the +/− zoom button moves the camera. */
 const ZOOM_BUTTON_STEP = 0.35;
 
+/* ------------------------- Label sprite helper ------------------------- */
+
+/**
+ * Build a small text sprite (web-only — uses a 2D canvas to render the
+ * glyphs into a CanvasTexture, which Three then samples on a Sprite).
+ * Returns null on platforms where `document` isn't available, so callers
+ * can skip the label gracefully.
+ */
+function makeTextSprite(
+  THREE: typeof import("three"),
+  text: string,
+  color: string,
+  scale: { w: number; h: number } = { w: 0.18, h: 0.045 },
+): import("three").Sprite | null {
+  if (typeof document === "undefined") return null;
+  const dpr = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = 256 * dpr;
+  canvas.height = 64 * dpr;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.scale(dpr, dpr);
+  ctx.font = '600 26px "Inter", system-ui, sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // Dark stroke for legibility over light landmasses + bright water.
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "rgba(0,0,0,0.85)";
+  ctx.strokeText(text, 128, 32);
+  ctx.fillStyle = color;
+  ctx.fillText(text, 128, 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+
+  const mat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(scale.w, scale.h, 1);
+  sprite.renderOrder = 2;
+  return sprite;
+}
+
 // Atmosphere is now a plain back-faced MeshBasicMaterial (see below).
 // The previous custom ShaderMaterial caused intermittent shader-compile
 // failures inside Three's getUniforms on web.
@@ -84,6 +132,20 @@ function buildLineMeshes(
     // Render *after* the opaque earth so the depth buffer is populated
     // when the lines draw — back-of-globe segments get correctly hidden.
     line.renderOrder = 1;
+
+    // Tag the line with its angle code (MC / IC / ASC / DSC). Sprite is
+    // a child of the line so it inherits the line's visibility toggling.
+    const angleLabel = seg.planetaryLine.angle.toUpperCase();
+    const colorHex = "#" + seg.color.toString(16).padStart(6, "0");
+    const labelSprite = makeTextSprite(THREE, angleLabel, colorHex);
+    if (labelSprite) {
+      const mid = pts[Math.floor(pts.length / 2)];
+      // Push the label slightly off the surface so it sits above the line.
+      const out = mid.clone().normalize().multiplyScalar(LINE_RADIUS + 0.025);
+      labelSprite.position.copy(out);
+      line.add(labelSprite);
+    }
+
     meshes.push(line);
   }
   return meshes;
@@ -104,6 +166,24 @@ function buildCityDots(
     const p = latLngToVector3(THREE, c.lat, c.lng, 1.02);
     mesh.position.copy(p);
     mesh.userData.city = c;
+
+    // Major cities (tier 1) get a small text label so users can see
+    // where the lines cross. Tier 2/3 stay unlabeled to keep clutter
+    // down at low zoom levels — they're already small.
+    if (c.tier === 1) {
+      const label = makeTextSprite(THREE, c.name, "#F5F0E8", {
+        w: 0.22,
+        h: 0.055,
+      });
+      if (label) {
+        // Local offset along the surface normal so the label sits
+        // just outside the dot, away from globe center.
+        const out = mesh.position.clone().normalize().multiplyScalar(0.05);
+        label.position.copy(out);
+        mesh.add(label);
+      }
+    }
+
     return { mesh, tier: c.tier };
   });
 }

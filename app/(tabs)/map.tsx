@@ -14,11 +14,6 @@ import { LIFE_GOALS } from "../../constants/mockChart";
 import { ANGLES } from "../../constants/planets";
 import { Planet } from "../../types";
 
-const ALL_PLANETS: Planet[] = [
-  "sun", "moon", "mercury", "venus", "mars",
-  "jupiter", "saturn", "uranus", "neptune", "pluto",
-];
-
 const LINE_LEGEND: Array<{ code: keyof typeof ANGLES; meaning: string }> = [
   { code: "mc",  meaning: "planet overhead" },
   { code: "ic",  meaning: "planet underfoot" },
@@ -43,17 +38,13 @@ export default function MapScreen() {
         const next = new Set(prev);
         next.has(id) ? next.delete(id) : next.add(id);
 
-        let planets: Planet[];
-        if (next.size === 0) {
-          planets = ALL_PLANETS;
-        } else {
-          const uniq = new Set<Planet>();
-          for (const goal of LIFE_GOALS) {
-            if (next.has(goal.id)) goal.planets.forEach((p) => uniq.add(p));
-          }
-          planets = Array.from(uniq);
+        // No goals selected → no lines drawn. Otherwise the union of
+        // each selected goal's planets is what shows on the globe.
+        const uniq = new Set<Planet>();
+        for (const goal of LIFE_GOALS) {
+          if (next.has(goal.id)) goal.planets.forEach((p) => uniq.add(p));
         }
-        useMapStore.setState({ visiblePlanets: new Set(planets) });
+        useMapStore.setState({ visiblePlanets: uniq });
         return next;
       });
     },

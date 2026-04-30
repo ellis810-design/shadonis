@@ -35,7 +35,9 @@ const ALL_ANGLES: Angle[] = ["asc", "dsc", "mc", "ic"];
 export const useMapStore = create<MapState>((set, get) => ({
   planetaryLines: [],
   selectedLine: null,
-  visiblePlanets: new Set(ALL_PLANETS),
+  // Lines hidden by default. They populate as the user checks Life Goals
+  // on the map page; an empty visiblePlanets set means no lines drawn.
+  visiblePlanets: new Set<Planet>(),
   visibleAngles: new Set(ALL_ANGLES),
   searchedCity: null,
   isLoadingLines: false,
